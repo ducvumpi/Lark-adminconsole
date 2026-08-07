@@ -227,7 +227,7 @@ export interface BudgetRecordFilter {
   nam?: string;
   thang?: string;
   maNganSach?: string;
-  soTien?: number; // <-- kiểm tra có field này chưa
+  soTien?: number;
 }
 function larkRecordToView(r: LarkRecord): BudgetRecordView {
   return {
@@ -265,14 +265,14 @@ export async function listBudgetRecordsAction(
 
     const filtered = allRecords.filter((r) => {
       const soTien = Number(r.fields["Số tiền TGĐ duyệt"]) || 0;
-      const filterSoTien = filter.soTien !== undefined ? Number(filter.soTien) : undefined; // <-- kiểm tra có dòng này
+      const filterSoTien = filter.soTien !== undefined ? Number(filter.soTien) : undefined;
       return (
         matchContains(r.fields["Brand"], filter.brand) &&
         matchContains(r.fields["Quý ngân sách"], filter.quy) &&
         matchContains(r.fields["Năm"], filter.nam) &&
         matchContains(r.fields["Tháng ngân sách"], filter.thang) &&
         matchContains(r.fields["Mã ngân sách"], filter.maNganSach) &&
-        (filterSoTien === undefined || soTien === filterSoTien) // <-- kiểm tra có điều kiện này
+        (filterSoTien === undefined || soTien === filterSoTien)
       );
     });
 
