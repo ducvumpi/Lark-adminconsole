@@ -1,0 +1,14 @@
+{
+  "activeBaseId": "default",
+  "bases": [
+    {
+      "id": "default",
+      "name": "Base Ngân sách",
+      "appId": "cli_aab9d527eda25eea",
+      "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
+      "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
+      "tableId": "tblALIORiaTl0PrL",
+      "apiBaseUrl": "https://open.larksuite.com/open-apis"
+    }
+  ]
+}
