@@ -21,7 +21,7 @@ export default function TiktokImportPanel() {
             const res = await fetchTiktokVideoMetricsAction(profileInput);
             if (!res.success) {
                 setMessage(res.message);
-                setPreview(null);
+                setPreview(null); https://www.tiktok.com/@bonganh0609/video/7666463866028674322
                 return;
             }
             setPreview(res.data ?? null);

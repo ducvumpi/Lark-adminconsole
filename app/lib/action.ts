@@ -227,8 +227,8 @@ export interface BudgetRecordFilter {
   nam?: string;
   thang?: string;
   maNganSach?: string;
+  soTien?: number; // <-- kiểm tra có field này chưa
 }
-
 function larkRecordToView(r: LarkRecord): BudgetRecordView {
   return {
     recordId: r.record_id,
@@ -243,6 +243,7 @@ function larkRecordToView(r: LarkRecord): BudgetRecordView {
 }
 
 /** Lọc record trong memory (contains, không phân biệt hoa thường/dấu). */
+
 export async function listBudgetRecordsAction(
   filter: BudgetRecordFilter
 ): Promise<ActionResult<BudgetRecordView[]>> {
@@ -262,14 +263,18 @@ export async function listBudgetRecordsAction(
       return normalizeText(fieldValue).includes(normalizeText(filterValue));
     };
 
-    const filtered = allRecords.filter(
-      (r) =>
+    const filtered = allRecords.filter((r) => {
+      const soTien = Number(r.fields["Số tiền TGĐ duyệt"]) || 0;
+      const filterSoTien = filter.soTien !== undefined ? Number(filter.soTien) : undefined; // <-- kiểm tra có dòng này
+      return (
         matchContains(r.fields["Brand"], filter.brand) &&
         matchContains(r.fields["Quý ngân sách"], filter.quy) &&
         matchContains(r.fields["Năm"], filter.nam) &&
         matchContains(r.fields["Tháng ngân sách"], filter.thang) &&
-        matchContains(r.fields["Mã ngân sách"], filter.maNganSach)
-    );
+        matchContains(r.fields["Mã ngân sách"], filter.maNganSach) &&
+        (filterSoTien === undefined || soTien === filterSoTien) // <-- kiểm tra có điều kiện này
+      );
+    });
 
     return { success: true, data: filtered.map(larkRecordToView) };
   } catch (err: any) {
@@ -362,32 +367,52 @@ export async function updateBudgetRecordAmountAction(
   }
 }
 
-export async function deleteBudgetRecordAction(recordId: string): Promise<ActionResult> {
+export async function deleteBudgetRecordsByFilterAction(
+  filter: BudgetRecordFilter
+): Promise<ActionResult<{ deletedCount: number; deleted: BudgetRecordView[] }>> {
   try {
-    const client = getLarkClient();
+    const hasFilter =
+      filter.brand || filter.quy || filter.nam || filter.thang || filter.maNganSach || filter.soTien !== undefined;
 
-    const before = await client.getRecord(recordId);
-    if (before) {
-      await appendAuditLog({
-        timestamp: new Date().toISOString(),
-        wasCreated: false,
-        action: "delete",
-        recordId,
-        brand: String(before.fields["Brand"] ?? ""),
-        quy: String(before.fields["Quý ngân sách"] ?? ""),
-        nam: String(before.fields["Năm"] ?? ""),
-        thang: String(before.fields["Tháng ngân sách"] ?? ""),
-        maNganSach: String(before.fields["Mã ngân sách"] ?? ""),
-        soTienLanNay: 0,
-        giaTriTruoc: Number(before.fields["Số tiền TGĐ duyệt"]) || 0,
-        giaTriSau: 0,
-      });
+    if (!hasFilter) {
+      return { success: false, message: "Cần ít nhất 1 điều kiện lọc để tránh xóa toàn bộ dữ liệu." };
     }
 
-    await client.deleteRecord(recordId);
-    return { success: true };
+    const searchRes = await listBudgetRecordsAction(filter);
+    if (!searchRes.success) {
+      return { success: false, message: searchRes.message };
+    }
+
+    const toDelete = searchRes.data ?? [];
+    const client = getLarkClient();
+    const deleted: BudgetRecordView[] = [];
+
+    for (const record of toDelete) {
+      try {
+        await appendAuditLog({
+          timestamp: new Date().toISOString(),
+          wasCreated: false,
+          action: "delete",
+          recordId: record.recordId,
+          brand: record.brand,
+          quy: record.quy,
+          nam: record.nam,
+          thang: record.thang,
+          maNganSach: record.maNganSach,
+          soTienLanNay: 0,
+          giaTriTruoc: record.soTien,
+          giaTriSau: 0,
+        });
+        await client.deleteRecord(record.recordId);
+        deleted.push(record);
+      } catch {
+        // Ghi nhận record nào xóa thất bại nhưng vẫn tiếp tục các record khác
+      }
+    }
+
+    return { success: true, data: { deletedCount: deleted.length, deleted } };
   } catch (err: any) {
-    return { success: false, message: err.message || "Xóa record thất bại." };
+    return { success: false, message: err.message || "Xóa theo điều kiện thất bại." };
   }
 }
 export interface TiktokProfileStats {
