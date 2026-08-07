@@ -289,7 +289,34 @@ export interface CreateBudgetRecordInput {
   maNganSach: string;
   soTien: number;
 }
+export async function deleteBudgetRecordAction(recordId: string): Promise<ActionResult> {
+  try {
+    const client = getLarkClient();
 
+    const before = await client.getRecord(recordId);
+    if (before) {
+      await appendAuditLog({
+        timestamp: new Date().toISOString(),
+        wasCreated: false,
+        action: "delete",
+        recordId,
+        brand: String(before.fields["Brand"] ?? ""),
+        quy: String(before.fields["Quý ngân sách"] ?? ""),
+        nam: String(before.fields["Năm"] ?? ""),
+        thang: String(before.fields["Tháng ngân sách"] ?? ""),
+        maNganSach: String(before.fields["Mã ngân sách"] ?? ""),
+        soTienLanNay: 0,
+        giaTriTruoc: Number(before.fields["Số tiền TGĐ duyệt"]) || 0,
+        giaTriSau: 0,
+      });
+    }
+
+    await client.deleteRecord(recordId);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Xóa record thất bại." };
+  }
+}
 export async function createBudgetRecordAction(
   input: CreateBudgetRecordInput
 ): Promise<ActionResult<BudgetRecordView>> {
