@@ -5,6 +5,12 @@ import { SESSION_COOKIE, getExpectedSessionValue } from "@/app/lib/auth";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Bỏ qua middleware auth cookie cho route dành riêng cho bot/Botpress —
+  // các route này tự xác thực bằng header x-api-key trong route handler.
+  if (pathname.startsWith("/api/bot")) {
+    return NextResponse.next();
+  }
+
   if (pathname === "/login") {
     return NextResponse.next();
   }

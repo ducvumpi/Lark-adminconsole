@@ -15774,5 +15774,45 @@
     "soTienLanNay": 10000000,
     "giaTriTruoc": 0,
     "giaTriSau": 10000000
+  },
+  {
+    "timestamp": "2026-08-07T03:19:27.956Z",
+    "wasCreated": false,
+    "action": "edit",
+    "recordId": "recvrkhe0InI4B",
+    "brand": "Baddies",
+    "quy": "Q3/2026",
+    "nam": "2026",
+    "thang": "Tháng 7",
+    "maNganSach": "BOO002",
+    "soTienLanNay": 123,
+    "giaTriTruoc": 11000000,
+    "giaTriSau": 123
+  },
+  {
+    "timestamp": "2026-08-07T03:19:58.551Z",
+    "wasCreated": false,
+    "action": "edit",
+    "recordId": "recvrkhe0InI4B",
+    "brand": "Baddies",
+    "quy": "Q3/2026",
+    "nam": "2026",
+    "thang": "Tháng 7",
+    "maNganSach": "BOO002",
+    "giaTriTruoc": 123
+  },
+  {
+    "timestamp": "2026-08-07T03:21:27.810Z",
+    "wasCreated": false,
+    "action": "delete",
+    "recordId": "recvrkhe0InI4B",
+    "brand": "Baddies",
+    "quy": "Q3/2026",
+    "nam": "2026",
+    "thang": "Tháng 7",
+    "maNganSach": "BOO002",
+    "soTienLanNay": 0,
+    "giaTriTruoc": 123,
+    "giaTriSau": 0
   }
 ]
