@@ -78,9 +78,10 @@ export async function getSettingsAction(): Promise<(LarkConfig & { complete: boo
 
 /** Lưu credentials cấp Base (không đụng danh sách Table). */
 export async function saveBaseSettingsAction(formData: FormData): Promise<ActionResult> {
-  const baseId = String(formData.get("baseId") || "");
+  const rawBaseId = String(formData.get("baseId") || "");
+  const baseId = rawBaseId || `base-${Date.now()}`;
   saveBaseProfile({
-    baseId: baseId || undefined,
+    baseId,
     name: String(formData.get("name") || ""),
     appId: String(formData.get("appId") || ""),
     appSecret: String(formData.get("appSecret") || ""),
