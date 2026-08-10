@@ -1,14 +1,41 @@
 {
   "activeBaseId": "default",
+  "activeTableId": "table-1786332662504-7hmk",
   "bases": [
     {
       "id": "default",
-      "name": "Base Ngân sách",
+      "name": "Base Ngân sách ",
       "appId": "cli_aab9d527eda25eea",
       "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
       "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
-      "tableId": "tblALIORiaTl0PrL",
-      "apiBaseUrl": "https://open.larksuite.com/open-apis"
+      "apiBaseUrl": "https://open.larksuite.com/open-apis",
+      "tables": [
+        {
+          "id": "table-1786332478231-lpw3",
+          "name": "Tester A03. Ngân sách được duyệt",
+          "tableId": "tblALIORiaTl0PrL"
+        },
+        {
+          "id": "table-1786332662504-7hmk",
+          "name": "Tester A02. Ngân sách dự chi",
+          "tableId": "tblD0d0Ug6In1PE9"
+        }
+      ]
+    },
+    {
+      "id": "base-1786333669798",
+      "name": "Base Booking ",
+      "appId": "cli_aab9d527eda25eea",
+      "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
+      "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
+      "apiBaseUrl": "https://open.larksuite.com/open-apis",
+      "tables": [
+        {
+          "id": "table-1786333703674-miq4",
+          "name": "Tester A03. Ngân sách dự chi",
+          "tableId": "tblALIORiaTl0PrL"
+        }
+      ]
     }
   ]
 }

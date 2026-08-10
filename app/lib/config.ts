@@ -1,27 +1,38 @@
 import fs from "fs";
 import path from "path";
 
-export interface LarkConfig {
+export interface LarkTableProfile {
+  id: string;
+  name: string;
+  tableId: string;
+}
+
+export interface LarkBaseCredentials {
   appId: string;
   appSecret: string;
   baseAppToken: string;
-  tableId: string;
   apiBaseUrl: string;
 }
 
-export interface LarkBaseProfile extends LarkConfig {
+export interface LarkConfig extends LarkBaseCredentials {
+  tableId: string;
+}
+
+export interface LarkBaseProfile extends LarkBaseCredentials {
   id: string;
   name: string;
+  tables: LarkTableProfile[];
 }
 
 export interface LarkConfigStorage {
   activeBaseId?: string;
+  activeTableId?: string;
   bases: LarkBaseProfile[];
 }
 
 const CONFIG_PATH = path.join(process.cwd(), "data", "config.json");
 
-function readOverrides(): Partial<LarkConfigStorage & LarkConfig> {
+function readOverrides(): any {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
     return JSON.parse(raw);
@@ -30,142 +41,237 @@ function readOverrides(): Partial<LarkConfigStorage & LarkConfig> {
   }
 }
 
-function createDefaultProfile(): LarkBaseProfile {
+function normalizeTableProfile(table: Partial<LarkTableProfile> | undefined, fallbackName = "Bảng"): LarkTableProfile {
+  const current = table ?? {};
   return {
-    id: "default",
-    name: "Base mặc định",
-    appId: process.env.LARK_APP_ID || "",
-    appSecret: process.env.LARK_APP_SECRET || "",
-    baseAppToken: process.env.LARK_BASE_APP_TOKEN || "",
-    tableId: process.env.LARK_TABLE_ID || "",
-    apiBaseUrl: process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
+    id: current.id || `table-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: current.name || fallbackName,
+    tableId: current.tableId || "",
   };
 }
 
-function normalizeBaseProfile(base: Partial<LarkBaseProfile> | undefined, fallbackName = "Base"): LarkBaseProfile {
+/** Chuẩn hóa 1 base profile — TƯƠNG THÍCH NGƯỢC với format cũ (base có `tableId` trực
+ * tiếp, không có mảng `tables`). Nếu gặp format cũ, tự động gói `tableId` cũ thành
+ * 1 table đầu tiên trong mảng `tables`. */
+function normalizeBaseProfile(base: any, fallbackName = "Base"): LarkBaseProfile {
   const current = base ?? {};
+
+  let tables: LarkTableProfile[];
+  if (Array.isArray(current.tables) && current.tables.length > 0) {
+    tables = current.tables.map((t: any, i: number) => normalizeTableProfile(t, `Bảng ${i + 1}`));
+  } else if (current.tableId) {
+    // Format cũ: base có tableId trực tiếp -> gói thành 1 table
+    tables = [normalizeTableProfile({ id: "table-1", name: "Bảng 1", tableId: current.tableId }, "Bảng 1")];
+  } else {
+    tables = [];
+  }
+
   return {
     id: current.id || `base-${Date.now()}`,
     name: current.name || fallbackName,
     appId: current.appId || "",
     appSecret: current.appSecret || "",
     baseAppToken: current.baseAppToken || "",
-    tableId: current.tableId || "",
     apiBaseUrl: current.apiBaseUrl || "https://open.larksuite.com/open-apis",
+    tables,
+  };
+}
+
+function createDefaultProfile(): LarkBaseProfile {
+  const envTableId = process.env.LARK_TABLE_ID || "";
+  return {
+    id: "default",
+    name: "Base mặc định",
+    appId: process.env.LARK_APP_ID || "",
+    appSecret: process.env.LARK_APP_SECRET || "",
+    baseAppToken: process.env.LARK_BASE_APP_TOKEN || "",
+    apiBaseUrl: process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
+    tables: envTableId ? [{ id: "table-1", name: "Bảng 1", tableId: envTableId }] : [],
   };
 }
 
 export function getConfigStorage(): LarkConfigStorage {
   const raw = readOverrides();
-  const legacy = {
-    appId: raw.appId || process.env.LARK_APP_ID || "",
-    appSecret: raw.appSecret || process.env.LARK_APP_SECRET || "",
-    baseAppToken: raw.baseAppToken || process.env.LARK_BASE_APP_TOKEN || "",
-    tableId: raw.tableId || process.env.LARK_TABLE_ID || "",
-    apiBaseUrl: raw.apiBaseUrl || process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
-  };
 
-  const legacyProfile = normalizeBaseProfile({
-    id: "default",
-    name: "Base mặc định",
-    ...legacy,
-  }, "Base mặc định");
+  const legacyProfile = normalizeBaseProfile(
+    {
+      id: "default",
+      name: "Base mặc định",
+      appId: raw.appId || process.env.LARK_APP_ID || "",
+      appSecret: raw.appSecret || process.env.LARK_APP_SECRET || "",
+      baseAppToken: raw.baseAppToken || process.env.LARK_BASE_APP_TOKEN || "",
+      apiBaseUrl: raw.apiBaseUrl || process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
+      tableId: raw.tableId || process.env.LARK_TABLE_ID || "",
+    },
+    "Base mặc định"
+  );
 
-  const existingBases = Array.isArray(raw.bases)
-    ? raw.bases.map((base, index) => normalizeBaseProfile(base, `Base ${index + 1}`))
+  const existingBases: LarkBaseProfile[] = Array.isArray(raw.bases)
+    ? raw.bases.map((base: any, index: number) => normalizeBaseProfile(base, `Base ${index + 1}`))
     : [legacyProfile];
 
-  const activeBaseId = raw.activeBaseId || existingBases[0]?.id || legacyProfile.id;
+  const bases = existingBases.length ? existingBases : [legacyProfile];
+  const activeBaseId = raw.activeBaseId || bases[0]?.id;
+  const activeBase = bases.find((b) => b.id === activeBaseId) ?? bases[0];
+  const activeTableId = raw.activeTableId || activeBase?.tables[0]?.id;
 
-  return {
-    activeBaseId,
-    bases: existingBases.length ? existingBases : [legacyProfile],
-  };
+  return { activeBaseId, activeTableId, bases };
 }
 
-/** Lấy cấu hình hiện tại: ưu tiên profile đang active trong data/config.json, fallback về .env */
+/** Lấy cấu hình hiện tại (Base + Table đang active), fallback về .env nếu chưa có gì */
 export function getConfig(): LarkConfig {
   const storage = getConfigStorage();
-  const activeBase = storage.bases.find((base) => base.id === storage.activeBaseId) ?? storage.bases[0] ?? createDefaultProfile();
+  const activeBase = storage.bases.find((b) => b.id === storage.activeBaseId) ?? storage.bases[0] ?? createDefaultProfile();
+  const activeTable = activeBase.tables.find((t) => t.id === storage.activeTableId) ?? activeBase.tables[0];
 
   return {
     appId: activeBase.appId,
     appSecret: activeBase.appSecret,
     baseAppToken: activeBase.baseAppToken,
-    tableId: activeBase.tableId,
     apiBaseUrl: activeBase.apiBaseUrl,
+    tableId: activeTable?.tableId || "",
   };
 }
 
-/** Lấy danh sách tất cả profile đang lưu */
 export function getAllBaseProfiles(): LarkBaseProfile[] {
   return getConfigStorage().bases;
 }
 
-/** Lưu đè cấu hình (ghi vào data/config.json, không đụng tới file .env gốc) */
-export function saveConfig(partial: Partial<LarkConfig> & { baseId?: string; name?: string }) {
-  const storage = getConfigStorage();
-  const baseId = partial.baseId || storage.activeBaseId || storage.bases[0]?.id || "default";
+function writeStorage(storage: LarkConfigStorage) {
+  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(storage, null, 2), "utf-8");
+}
 
-  const existingIndex = storage.bases.findIndex((base) => base.id === baseId);
+/** Lưu credentials cấp Base (appId/appSecret/baseAppToken/apiBaseUrl/name).
+ * KHÔNG đụng tới danh sách tables — dùng saveTableProfile() riêng cho việc đó. */
+export function saveBaseProfile(partial: Partial<LarkBaseCredentials> & { baseId: string; name?: string }) {
+  const storage = getConfigStorage();
+  const baseId = partial.baseId; // không còn fallback ngầm về activeBaseId nữa
+  const existingIndex = storage.bases.findIndex((b) => b.id === baseId);
+  const existing = existingIndex >= 0 ? storage.bases[existingIndex] : undefined;
+
   const nextBase = normalizeBaseProfile(
     {
-      ...(existingIndex >= 0 ? storage.bases[existingIndex] : {}),
+      ...existing,
       id: baseId,
-      name: partial.name || (existingIndex >= 0 ? storage.bases[existingIndex].name : "Base mới"),
-      appId: partial.appId || storage.bases[existingIndex]?.appId || "",
-      appSecret: partial.appSecret || storage.bases[existingIndex]?.appSecret || "",
-      baseAppToken: partial.baseAppToken || storage.bases[existingIndex]?.baseAppToken || "",
-      tableId: partial.tableId || storage.bases[existingIndex]?.tableId || "",
-      apiBaseUrl: partial.apiBaseUrl || storage.bases[existingIndex]?.apiBaseUrl || "https://open.larksuite.com/open-apis",
+      name: partial.name || existing?.name || "Base mới",
+      appId: partial.appId ?? existing?.appId ?? "",
+      appSecret: partial.appSecret ?? existing?.appSecret ?? "",
+      baseAppToken: partial.baseAppToken ?? existing?.baseAppToken ?? "",
+      apiBaseUrl: partial.apiBaseUrl || existing?.apiBaseUrl || "https://open.larksuite.com/open-apis",
+      tables: existing?.tables ?? [],
     },
     "Base mới"
   );
 
   const nextBases = [...storage.bases];
-  if (existingIndex >= 0) {
-    nextBases[existingIndex] = nextBase;
-  } else {
-    nextBases.push(nextBase);
-  }
+  if (existingIndex >= 0) nextBases[existingIndex] = nextBase;
+  else nextBases.push(nextBase);
 
-  const nextStorage: LarkConfigStorage = {
+  writeStorage({
     activeBaseId: baseId,
+    activeTableId: storage.activeTableId,
     bases: nextBases,
-  };
+  });
+}
 
-  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(nextStorage, null, 2), "utf-8");
+/** Thêm hoặc sửa 1 Table trong 1 Base cụ thể. Nếu tableProfileId đã tồn tại -> sửa,
+ * chưa tồn tại (hoặc để trống) -> thêm mới. */
+export function saveTableProfile(
+  baseId: string,
+  table: { tableProfileId?: string; name: string; tableId: string }
+) {
+  const storage = getConfigStorage();
+  const baseIndex = storage.bases.findIndex((b) => b.id === baseId);
+  if (baseIndex === -1) return;
+
+  const base = storage.bases[baseIndex];
+  const existingTableIndex = table.tableProfileId
+    ? base.tables.findIndex((t) => t.id === table.tableProfileId)
+    : -1;
+
+  const nextTable = normalizeTableProfile(
+    {
+      id: table.tableProfileId,
+      name: table.name,
+      tableId: table.tableId,
+    },
+    "Bảng mới"
+  );
+
+  const nextTables = [...base.tables];
+  if (existingTableIndex >= 0) nextTables[existingTableIndex] = nextTable;
+  else nextTables.push(nextTable);
+
+  const nextBases = [...storage.bases];
+  nextBases[baseIndex] = { ...base, tables: nextTables };
+
+  writeStorage({
+    activeBaseId: baseId,
+    activeTableId: nextTable.id,
+    bases: nextBases,
+  });
+}
+
+export function deleteTableProfile(baseId: string, tableProfileId: string) {
+  const storage = getConfigStorage();
+  const baseIndex = storage.bases.findIndex((b) => b.id === baseId);
+  if (baseIndex === -1) return;
+
+  const base = storage.bases[baseIndex];
+  const nextTables = base.tables.filter((t) => t.id !== tableProfileId);
+
+  const nextBases = [...storage.bases];
+  nextBases[baseIndex] = { ...base, tables: nextTables };
+
+  const nextActiveTableId =
+    storage.activeTableId === tableProfileId ? nextTables[0]?.id : storage.activeTableId;
+
+  writeStorage({
+    activeBaseId: storage.activeBaseId,
+    activeTableId: nextActiveTableId,
+    bases: nextBases,
+  });
 }
 
 export function setActiveBase(baseId: string) {
   const storage = getConfigStorage();
-  const target = storage.bases.find((base) => base.id === baseId);
+  const target = storage.bases.find((b) => b.id === baseId);
   if (!target) return;
 
-  const nextStorage: LarkConfigStorage = {
+  writeStorage({
     activeBaseId: baseId,
+    activeTableId: target.tables[0]?.id, // đổi Base -> reset về Table đầu tiên của Base đó
     bases: storage.bases,
-  };
+  });
+}
 
-  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(nextStorage, null, 2), "utf-8");
+export function setActiveTable(baseId: string, tableProfileId: string) {
+  const storage = getConfigStorage();
+  const base = storage.bases.find((b) => b.id === baseId);
+  if (!base) return;
+  const target = base.tables.find((t) => t.id === tableProfileId);
+  if (!target) return;
+
+  writeStorage({
+    activeBaseId: baseId,
+    activeTableId: tableProfileId,
+    bases: storage.bases,
+  });
 }
 
 export function deleteBaseProfile(baseId: string) {
   const storage = getConfigStorage();
-  const filtered = storage.bases.filter((base) => base.id !== baseId);
+  const filtered = storage.bases.filter((b) => b.id !== baseId);
   const nextBases = filtered.length > 0 ? filtered : [createDefaultProfile()];
-  const nextStorage: LarkConfigStorage = {
-    activeBaseId: nextBases[0]?.id,
-    bases: nextBases,
-  };
 
-  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(nextStorage, null, 2), "utf-8");
+  writeStorage({
+    activeBaseId: nextBases[0]?.id,
+    activeTableId: nextBases[0]?.tables[0]?.id,
+    bases: nextBases,
+  });
 }
 
-/** Kiểm tra cấu hình đã đủ để gọi Lark API chưa */
 export function isConfigComplete(cfg: LarkConfig): boolean {
   return Boolean(cfg.appId && cfg.appSecret && cfg.baseAppToken && cfg.tableId);
 }

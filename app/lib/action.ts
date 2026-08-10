@@ -6,9 +6,21 @@ import * as XLSX from "xlsx";
 import fs from "fs/promises";
 import path from "path";
 import { SESSION_COOKIE, getExpectedSessionValue } from "./auth";
-import { getConfig, saveConfig, isConfigComplete, LarkConfig, getAllBaseProfiles, setActiveBase, getConfigStorage, LarkBaseProfile, deleteBaseProfile } from "./config";
 import { getLarkClient, LarkField, LarkRecord } from "./lark-client";
-
+import {
+  getConfig,
+  isConfigComplete,
+  LarkConfig,
+  getAllBaseProfiles,
+  setActiveBase,
+  setActiveTable,
+  getConfigStorage,
+  LarkBaseProfile,
+  deleteBaseProfile,
+  saveBaseProfile,
+  saveTableProfile,
+  deleteTableProfile,
+} from "./config";
 export type ActionResult<T = undefined> = { success: true; data?: T } | { success: false; message: string };
 
 /** Ép dữ liệu về plain object/array thuần túy (loại bỏ mọi class instance, method, prototype lạ)
@@ -49,7 +61,10 @@ export async function logoutAction(): Promise<void> {
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 
-export async function getSettingsAction(): Promise<(LarkConfig & { complete: boolean }) & { profiles: LarkBaseProfile[]; activeBaseId?: string }> {
+
+
+
+export async function getSettingsAction(): Promise<(LarkConfig & { complete: boolean }) & { profiles: LarkBaseProfile[]; activeBaseId?: string; activeTableId?: string; }> {
   const cfg = getConfig();
   const storage = getConfigStorage();
   return {
@@ -57,23 +72,36 @@ export async function getSettingsAction(): Promise<(LarkConfig & { complete: boo
     complete: isConfigComplete(cfg),
     profiles: storage.bases,
     activeBaseId: storage.activeBaseId,
+    activeTableId: storage.activeTableId,
   };
 }
 
-export async function saveSettingsAction(formData: FormData): Promise<ActionResult> {
+/** Lưu credentials cấp Base (không đụng danh sách Table). */
+export async function saveBaseSettingsAction(formData: FormData): Promise<ActionResult> {
   const baseId = String(formData.get("baseId") || "");
-  const name = String(formData.get("name") || "");
-  const newBaseId = baseId || `base-${Date.now()}`;
-
-  saveConfig({
-    baseId: newBaseId,
-    name: name || undefined,
+  saveBaseProfile({
+    baseId: baseId || undefined,
+    name: String(formData.get("name") || ""),
     appId: String(formData.get("appId") || ""),
     appSecret: String(formData.get("appSecret") || ""),
     baseAppToken: String(formData.get("baseAppToken") || ""),
-    tableId: String(formData.get("tableId") || ""),
     apiBaseUrl: String(formData.get("apiBaseUrl") || ""),
   });
+  return { success: true };
+}
+
+/** Thêm hoặc sửa 1 Table trong Base đang chọn. */
+export async function saveTableSettingsAction(formData: FormData): Promise<ActionResult> {
+  const baseId = String(formData.get("baseId") || "");
+  if (!baseId) return { success: false, message: "Chưa xác định Base để thêm bảng." };
+
+  const tableProfileId = String(formData.get("tableProfileId") || "") || undefined;
+  const name = String(formData.get("tableName") || "");
+  const tableId = String(formData.get("tableId") || "");
+
+  if (!tableId) return { success: false, message: "Table ID không được để trống." };
+
+  saveTableProfile(baseId, { tableProfileId, name: name || "Bảng mới", tableId });
   return { success: true };
 }
 
@@ -82,14 +110,25 @@ export async function switchBaseAction(baseId: string): Promise<ActionResult> {
   return { success: true };
 }
 
+export async function switchTableAction(baseId: string, tableProfileId: string): Promise<ActionResult> {
+  setActiveTable(baseId, tableProfileId);
+  return { success: true };
+}
+
 export async function deleteBaseProfileAction(baseId: string): Promise<ActionResult> {
   deleteBaseProfile(baseId);
+  return { success: true };
+}
+
+export async function deleteTableProfileAction(baseId: string, tableProfileId: string): Promise<ActionResult> {
+  deleteTableProfile(baseId, tableProfileId);
   return { success: true };
 }
 
 export async function getAllProfilesAction(): Promise<ActionResult<LarkBaseProfile[]>> {
   return { success: true, data: getAllBaseProfiles() };
 }
+
 
 // ─── Fields ──────────────────────────────────────────────────────────────────
 
