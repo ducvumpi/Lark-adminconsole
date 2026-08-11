@@ -1,10 +1,10 @@
 {
-  "activeBaseId": "default",
-  "activeTableId": "table-1786332662504-7hmk",
+  "activeBaseId": "base-1786446913694",
+  "activeTableId": "table-1786446947253-mhg2",
   "bases": [
     {
       "id": "default",
-      "name": "Base Ngân sách ",
+      "name": "BaseNgân sách ",
       "appId": "cli_aab9d527eda25eea",
       "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
       "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
@@ -34,6 +34,21 @@
           "id": "table-1786333703674-miq4",
           "name": "Tester A03. Ngân sách dự chi",
           "tableId": "tblALIORiaTl0PrL"
+        }
+      ]
+    },
+    {
+      "id": "base-1786446913694",
+      "name": "Base Booking test",
+      "appId": "cli_aab9d527eda25eea",
+      "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
+      "baseAppToken": "MWGAwF5kxidxEykrSs0l6EmMgBh",
+      "apiBaseUrl": "https://open.larksuite.com/open-apis",
+      "tables": [
+        {
+          "id": "table-1786446947253-mhg2",
+          "name": "Test B04. Quản lý Booking",
+          "tableId": "tbl656FUhWjUT3T1"
         }
       ]
     }

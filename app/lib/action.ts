@@ -92,7 +92,6 @@ export async function saveBaseSettingsAction(formData: FormData): Promise<Action
 }
 
 
-
 export async function saveTableSettingsAction(formData: FormData): Promise<ActionResult> {
   const baseId = String(formData.get("baseId") || "");
   if (!baseId) return { success: false, message: "Chưa xác định Base để thêm bảng." };
