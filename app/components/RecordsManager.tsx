@@ -248,7 +248,7 @@ export default function RecordsManager({
                     {group.records.map((record, recordIndex) => (
                       <li key={record.record_id ?? `${group.budgetName}-${recordIndex}`} className="flex items-center justify-between gap-4">
                         <span>
-                          {displayValue(record.fields["Tên ngân sách"]) || record.record_id} — {displayValue(record.fields["Tổng ngân sách"]) }
+                          {displayValue(record.fields["Tên ngân sách"]) || record.record_id} — {displayValue(record.fields["Tổng ngân sách"])}
                         </span>
                         <button
                           className="btn btn-sm btn-danger"

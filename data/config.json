@@ -1,10 +1,10 @@
 {
   "activeBaseId": "base-1786446913694",
-  "activeTableId": "table-1786446947253-mhg2",
+  "activeTableId": "table-1786461346710-m6iw",
   "bases": [
     {
       "id": "default",
-      "name": "BaseNgân sách ",
+      "name": "Base Booking test",
       "appId": "cli_aab9d527eda25eea",
       "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
       "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
@@ -47,7 +47,12 @@
       "tables": [
         {
           "id": "table-1786446947253-mhg2",
-          "name": "Test B04. Quản lý Booking",
+          "name": "Test B04. Quản lý Booking 1",
+          "tableId": "tblQ39cOa4CvUWe6"
+        },
+        {
+          "id": "table-1786461346710-m6iw",
+          "name": "Test B04. Quản lý Booking ",
           "tableId": "tbl656FUhWjUT3T1"
         }
       ]

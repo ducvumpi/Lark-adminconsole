@@ -155,31 +155,31 @@ export async function listFieldsAction(): Promise<ActionResult<LarkField[]>> {
 
 // ─── Records ─────────────────────────────────────────────────────────────────
 
-export async function listRecordsAction(options: {
-  filter?: string;
-  pageSize?: number;
-  pageToken?: string;
-}): Promise<ActionResult<{ items: LarkRecord[]; hasMore: boolean; pageToken?: string; total: number }>> {
-  try {
-    const client = getLarkClient();
-    const result = await client.listRecords(options);
-    return { success: true, data: result };
-  } catch (err: any) {
-    return { success: false, message: err.message || "Lỗi không xác định" };
-  }
+export async function listRecordsAction(options: { filter?: string; pageSize?: number; pageToken?: string; }) { 
+  try { 
+    const client = getLarkClient(); 
+    // Luôn ép lấy tối đa 100 bản ghi/trang để tải nhanh nhất
+    const result = await client.listRecords({
+      ...options,
+      pageSize: options.pageSize ?? 100 
+    }); 
+    return { success: true, data: result }; 
+  } catch (err: any) { 
+    return { success: false, message: err.message || "Lỗi không xác định" }; 
+  } 
 }
+
 
 export async function findDuplicateBudgetRecordsAction(): Promise<ActionResult<{ budgetName: string; records: LarkRecord[] }[]>> {
   try {
     const client = getLarkClient();
-    const allRecords: LarkRecord[] = [];
-    let pageToken: string | undefined;
-
-    do {
-      const result = await client.listRecords({ pageSize: 100, pageToken });
-      allRecords.push(...result.items);
-      pageToken = result.hasMore ? result.pageToken : undefined;
-    } while (pageToken);
+  const allRecords: LarkRecord[] = [];
+let pageToken: string | undefined;
+do {
+  const result = await client.listRecords({ pageSize: 100, pageToken });
+  allRecords.push(...result.items);
+  pageToken = result.hasMore ? result.pageToken : undefined;
+} while (pageToken);
 
     const groups = new Map<string, LarkRecord[]>();
     for (const record of allRecords) {
