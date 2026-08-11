@@ -1,5 +1,5 @@
 "use server";
-
+import axios from "axios";
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import * as XLSX from "xlsx";
@@ -226,7 +226,54 @@ export async function updateRecordAction(
     return { success: false, message: err.message || "Lỗi không xác định" };
   }
 }
+async function resolveTikTokUrl(inputUrl: string): Promise<string> {
+  const url = inputUrl.trim();
 
+  if (
+    url.includes("www.tiktok.com/@") &&
+    url.includes("/video/")
+  ) {
+    return url;
+  }
+
+  if (
+    !url.includes("vt.tiktok.com") &&
+    !url.includes("vm.tiktok.com")
+  ) {
+    return url;
+  }
+
+  try {
+    const response = await axios.get(url, {
+      maxRedirects: 10,
+      timeout: 15000,
+
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+      },
+
+      validateStatus: () => true,
+    });
+
+    const finalUrl =
+      response.request?.res?.responseUrl;
+
+    if (finalUrl) {
+      return finalUrl;
+    }
+
+    return url;
+
+  } catch (error) {
+    console.error(
+      "TikTok resolve error:",
+      error
+    );
+
+    return url;
+  }
+}
 export async function deleteRecordAction(recordId: string): Promise<ActionResult> {
   try {
     const client = getLarkClient();
@@ -646,69 +693,1118 @@ function pickRealFieldName(fieldMap: Map<string, string>, aliases: string[]): st
   }
   return null;
 }
-
-export async function fetchTiktokVideoMetricsAction(input: string): Promise<ActionResult<TiktokVideoMetrics>> {
+export async function fetchTiktokVideoMetricsAction(
+  input: string
+): Promise<ActionResult<TiktokVideoMetrics>> {
   try {
-    const { videoId, videoUrl } = describeVideoMetricInput(input);
-    const retrievalTime = new Date().toISOString();
+   let videoUrl = normalizeTikTokInput(input);
+
+if (!videoUrl) {
+  throw new Error("Link TikTok đang trống.");
+}
+
+if (!/^https?:\/\//i.test(videoUrl)) {
+  videoUrl = `https://${videoUrl}`;
+}
+
+console.log(
+  "TikTok URL ban đầu:",
+  videoUrl
+);
+
+// ============================================================
+// Resolve TikTok short URL
+// ============================================================
+
+const isShortTikTokUrl =
+  /^(https?:\/\/)?(vt|vm)\.tiktok\.com\//i.test(
+    videoUrl
+  );
+
+if (isShortTikTokUrl) {
+  const redirectResponse = await fetch(
+    videoUrl,
+    {
+      method: "GET",
+
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+
+        "Accept-Language":
+          "en-US,en;q=0.9",
+      },
+
+      redirect: "follow",
+    }
+  );
+
+  console.log(
+    "Short URL response:",
+    redirectResponse.status
+  );
+
+  console.log(
+    "Resolved URL:",
+    redirectResponse.url
+  );
+
+  if (redirectResponse.url) {
+    videoUrl = redirectResponse.url;
+  }
+}
+
+console.log(
+  "TikTok URL sau resolve:",
+  videoUrl
+);
+
+// ============================================================
+// Lấy Video ID
+// ============================================================
+
+const videoIdMatch =
+  videoUrl.match(
+    /tiktok\.com\/@[^/]*\/video\/(\d+)/i
+  ) ||
+  videoUrl.match(
+    /tiktok\.com\/video\/(\d+)/i
+  ) ||
+  videoUrl.match(
+    /[?&](?:share_item_id|item_id)=(\d+)/i
+  );
+
+if (!videoIdMatch) {
+  throw new Error(
+    `Không lấy được video ID từ URL TikTok: ${videoUrl}`
+  );
+}
+
+const videoId =
+  videoIdMatch[1];
+
+console.log(
+  "TikTok video ID:",
+  videoId
+);
+
+    // ============================================================
+    // 4. Đọc trang TikTok
+    // ============================================================
+
+    const retrievalTime =
+      new Date().toISOString();
+
     const response = await fetch(videoUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.tiktok.com/",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+
+        "Accept-Language":
+          "en-US,en;q=0.9",
+
+        Referer:
+          "https://www.tiktok.com/",
       },
+
       redirect: "follow",
     });
 
     if (!response.ok) {
-      throw new Error(`TikTok trả về trạng thái ${response.status} khi đọc video ${videoId}.`);
+      throw new Error(
+        `TikTok trả về trạng thái ${response.status} khi đọc video ${videoId}.`
+      );
     }
 
-    const html = await response.text();
-    const hydration = lookupNestedScriptObject(html);
-    const scope = hydration?.["__DEFAULT_SCOPE__"] ?? hydration ?? {};
+    // ============================================================
+    // 5. Parse HTML
+    // ============================================================
+
+    const html =
+      await response.text();
+
+    const hydration =
+      lookupNestedScriptObject(html);
+
+    const scope =
+      hydration?.["__DEFAULT_SCOPE__"] ??
+      hydration ??
+      {};
 
     const candidates = [
       scope["webapp.video-detail"],
       scope["webapp.user-detail"],
       scope,
-      deepFindValue(scope, "itemInfo"),
+      deepFindValue(
+        scope,
+        "itemInfo"
+      ),
     ];
 
-    const candidateVideo = candidates.find(Boolean) as Record<string, unknown> | undefined;
-    const title = String(deepFindValue(candidateVideo, "title") ?? deepFindValue(candidateVideo, "desc") ?? "") || "—";
-    const uploader = String(deepFindValue(candidateVideo, "authorName") ?? deepFindValue(candidateVideo, "uniqueId") ?? deepFindValue(candidateVideo, "nickname") ?? "") || "—";
-    const viewCount = getNumber(deepFindValue(candidateVideo, "playCount") ?? deepFindValue(candidateVideo, "viewCount"));
-    const commentCount = getNumber(deepFindValue(candidateVideo, "commentCount"));
-    const collectionCount = getNumber(deepFindValue(candidateVideo, "collectCount") ?? deepFindValue(candidateVideo, "favoriteCount"));
-    const likeCount = getNumber(deepFindValue(candidateVideo, "diggCount") ?? deepFindValue(candidateVideo, "likeCount"));
-    const shareCount = getNumber(deepFindValue(candidateVideo, "shareCount"));
-    const releaseTime = String(deepFindValue(candidateVideo, "createTime") ?? deepFindValue(candidateVideo, "releaseTime") ?? "") || "—";
-    const totalInteractionCount = viewCount + commentCount + likeCount + shareCount + collectionCount;
+    const candidateVideo =
+      candidates.find(Boolean) as
+        | Record<string, unknown>
+        | undefined;
+
+    // ============================================================
+    // 6. Đọc chỉ số
+    // ============================================================
+console.log("===== TIKTOK DEBUG =====");
+
+console.log(
+  "Video URL:",
+  videoUrl
+);
+
+console.log(
+  "Video ID:",
+  videoId
+);
+
+console.log(
+  "Candidate video:"
+);
+
+console.dir(
+  candidateVideo,
+  { depth: 8 }
+);
+
+console.log(
+  "playCount:",
+  deepFindValue(
+    candidateVideo,
+    "playCount"
+  )
+);
+
+console.log(
+  "viewCount:",
+  deepFindValue(
+    candidateVideo,
+    "viewCount"
+  )
+);
+
+console.log(
+  "diggCount:",
+  deepFindValue(
+    candidateVideo,
+    "diggCount"
+  )
+);
+
+console.log(
+  "commentCount:",
+  deepFindValue(
+    candidateVideo,
+    "commentCount"
+  )
+);
+
+console.log(
+  "shareCount:",
+  deepFindValue(
+    candidateVideo,
+    "shareCount"
+  )
+);
+
+console.log(
+  "collectCount:",
+  deepFindValue(
+    candidateVideo,
+    "collectCount"
+  )
+);
+
+console.log(
+  "========================"
+);
+    const title =
+      String(
+        deepFindValue(
+          candidateVideo,
+          "title"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "desc"
+          ) ??
+          ""
+      ) || "—";
+
+    const uploader =
+      String(
+        deepFindValue(
+          candidateVideo,
+          "authorName"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "uniqueId"
+          ) ??
+          deepFindValue(
+            candidateVideo,
+            "nickname"
+          ) ??
+          ""
+      ) || "—";
+
+    const viewCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "playCount"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "viewCount"
+          )
+      );
+
+    const commentCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "commentCount"
+        )
+      );
+
+    const collectionCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "collectCount"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "favoriteCount"
+          )
+      );
+
+    const likeCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "diggCount"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "likeCount"
+          )
+      );
+
+    const shareCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "shareCount"
+        )
+      );
+
+    const releaseTime =
+      String(
+        deepFindValue(
+          candidateVideo,
+          "createTime"
+        ) ??
+          deepFindValue(
+            candidateVideo,
+            "releaseTime"
+          ) ??
+          ""
+      ) || "—";
+
+    const totalInteractionCount =
+      viewCount +
+      commentCount +
+      likeCount +
+      shareCount +
+      collectionCount;
+
+    // ============================================================
+    // 7. Tạo payload
+    // ============================================================
 
     const payload: TiktokVideoMetrics = {
-      title: String(title).trim() || "—",
-      uploader: String(uploader).trim() || "—",
+      title:
+        String(title).trim() || "—",
+
+      uploader:
+        String(uploader).trim() || "—",
+
       viewCount,
+
       commentCount,
+
       collectionCount,
+
       likeCount,
+
       totalInteractionCount,
-      releaseTime: String(releaseTime).trim() || "—",
+
+      releaseTime:
+        String(releaseTime).trim() || "—",
+
       shareCount,
-      dataRetrievalTime: retrievalTime,
+
+      dataRetrievalTime:
+        retrievalTime,
+
       errorMessage: "",
     };
 
-    return { success: true, data: toPlain(payload) };
+    console.log(
+      "TikTok metrics:",
+      payload
+    );
+
+    return {
+      success: true,
+      data: toPlain(payload),
+    };
+
   } catch (err: any) {
+    console.error(
+      "TikTok metrics error:",
+      err
+    );
+
     return {
       success: false,
-      message: err.message || "Lỗi không xác định khi đọc dữ liệu video TikTok.",
+      message:
+        err?.message ||
+        "Lỗi không xác định khi đọc dữ liệu video TikTok.",
     };
   }
 }
 
+export interface SyncTiktokRecordResult {
+  recordId: string;
+  linkAir: string;
+  success: boolean;
+
+  title?: string;
+  uploader?: string;
+
+  viewCount?: number;
+  commentCount?: number;
+  collectionCount?: number;
+  likeCount?: number;
+  shareCount?: number;
+  totalInteractionCount?: number;
+
+  releaseTime?: string;
+  dataRetrievalTime?: string;
+
+  errorMessage?: string;
+}
+
+function extractLinkAir(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+
+  // String
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  // Array
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const result = extractLinkAir(item);
+
+      if (result) {
+        return result;
+      }
+    }
+
+    return "";
+  }
+
+  // Object
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+
+    // URL trực tiếp
+    const keys = [
+      "link",
+      "url",
+      "href",
+      "text",
+      "value",
+    ];
+
+    for (const key of keys) {
+      const child = obj[key];
+
+      if (typeof child === "string") {
+        if (
+          child.includes("tiktok.com") ||
+          child.includes("vm.tiktok.com")
+        ) {
+          return child.trim();
+        }
+      }
+    }
+
+    // Tìm đệ quy bên trong object
+    for (const child of Object.values(obj)) {
+      const result = extractLinkAir(child);
+
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return "";
+}
+function isTikTokVideoUrl(url: string): boolean {
+  if (!url) return false;
+
+  const normalized = url.trim().toLowerCase();
+
+  try {
+    const parsed = new URL(normalized);
+
+    const hostname = parsed.hostname;
+
+    // TikTok video dạng:
+    // https://www.tiktok.com/@username/video/123456
+    if (
+      hostname === "www.tiktok.com" ||
+      hostname === "tiktok.com"
+    ) {
+      return (
+        parsed.pathname.includes("/video/") ||
+        parsed.pathname.startsWith("/@")
+      );
+    }
+
+    // TikTok link rút gọn:
+    // https://vt.tiktok.com/ZSfCQofPR/
+    if (
+      hostname === "vt.tiktok.com" ||
+      hostname === "vm.tiktok.com"
+    ) {
+      return true;
+    }
+
+    return false;
+
+  } catch {
+    return false;
+  }
+}
+function normalizeTikTokInput(input: string): string {
+  let value = input.trim();
+
+  // Markdown link:
+  // [https://example.com](https://example.com)
+  const markdownMatch = value.match(
+    /^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/
+  );
+
+  if (markdownMatch) {
+    value = markdownMatch[2];
+  }
+
+  // Nếu có text thừa trước/sau URL
+  const urlMatch = value.match(
+    /https?:\/\/(?:www\.|vt\.|vm\.)?tiktok\.com\/[^\s)]+/i
+  );
+
+  if (urlMatch) {
+    value = urlMatch[0];
+  }
+
+  return value.trim();
+}
+function toLarkDatetime(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const raw = String(value).trim();
+
+  if (!raw || raw === "—") {
+    return null;
+  }
+
+  const numberValue = Number(raw);
+
+  if (Number.isFinite(numberValue)) {
+    // TikTok createTime thường là Unix timestamp giây
+    if (numberValue < 10000000000) {
+      return numberValue * 1000;
+    }
+
+    return numberValue;
+  }
+
+  const dateValue = Date.parse(raw);
+
+  if (Number.isFinite(dateValue)) {
+    return dateValue;
+  }
+
+  return null;
+}
+export async function syncAllTiktokRecordsAction(): Promise<
+  ActionResult<SyncTiktokRecordResult[]>
+> {
+  try {
+    console.log("========================================");
+    console.log("START SYNC TIKTOK");
+    console.log("========================================");
+
+    const client = getLarkClient();
+
+    // ============================================================
+    // 1. LẤY DANH SÁCH FIELD
+    // ============================================================
+
+    const fields = await client.listFields();
+
+    console.log("Lark fields:");
+
+    console.table(
+      fields.map((field) => ({
+        field_name: field.field_name,
+        field_id: field.field_id,
+        type: field.type,
+      }))
+    );
+
+    // Tìm chính xác field Link Air
+    const linkAirField = fields.find(
+      (field) =>
+        field.field_name.trim().toLowerCase() === "link air"
+    );
+
+    if (!linkAirField) {
+      throw new Error(
+        `Không tìm thấy cột "Link Air" trong Lark Base.
+
+Các field hiện có:
+${fields.map((f) => f.field_name).join(", ")}`
+      );
+    }
+
+    const linkAirFieldName = linkAirField.field_name;
+
+    console.log(
+      "Link Air field:",
+      linkAirFieldName
+    );
+
+    // ============================================================
+    // 2. LẤY TOÀN BỘ RECORD
+    // ============================================================
+
+    const allRecords: LarkRecord[] = [];
+
+    let pageToken: string | undefined;
+
+    do {
+  console.log(
+    "Đang lấy records, pageToken:",
+    pageToken || "(first page)"
+  );
+
+  const result = await client.listRecords({
+    pageSize: 100,
+    pageToken,
+  });
+
+  console.log(
+    `Nhận được ${result.items.length} records`
+  );
+
+  allRecords.push(...result.items);
+
+  pageToken = result.hasMore
+    ? result.pageToken
+    : undefined;
+
+} while (pageToken);
+
+console.log(
+  `TỔNG RECORD: ${allRecords.length}`
+);
+const testRecords = allRecords.slice(0, 10);
+
+console.log(
+  `TEST MODE: chỉ xử lý ${testRecords.length} record đầu tiên`
+);
+
+    // ============================================================
+    // 3. LỌC RECORD CÓ LINK AIR
+    // ============================================================
+
+   const tiktokRecords: {
+  record: LarkRecord;
+  linkAir: string;
+}[] = [];
+
+for (const record of testRecords) {
+  const rawValue = record.fields[linkAirFieldName];
+
+  console.log("================================");
+  console.log("RECORD ID:", record.record_id);
+
+  console.log("FIELD NAME:", linkAirFieldName);
+
+  console.log("RAW LINK AIR:");
+  console.dir(rawValue, { depth: null });
+
+  const linkAir = extractLinkAir(rawValue);
+
+  console.log("EXTRACTED LINK:", linkAir);
+
+  if (!linkAir) {
+    console.log("❌ Không extract được URL");
+    continue;
+  }
+
+  console.log("URL:", linkAir);
+
+  const isTikTok = isTikTokVideoUrl(linkAir);
+
+  console.log("IS TIKTOK:", isTikTok);
+
+  if (!isTikTok) {
+    console.log("⚠️ Có URL nhưng không phải TikTok");
+    continue;
+  }
+
+  console.log("✅ TIKTOK RECORD");
+
+  tiktokRecords.push({
+    record,
+    linkAir,
+  });
+}
+
+console.log(
+  `TỔNG LINK TIKTOK: ${tiktokRecords.length}`
+);
+
+    // ============================================================
+    // 4. ĐỌC TỪNG VIDEO
+    // ============================================================
+
+    const results: SyncTiktokRecordResult[] = [];
+
+    for (const item of tiktokRecords) {
+      const record = item.record;
+      const linkAir = item.linkAir;
+
+      console.log(
+        "----------------------------------------"
+      );
+
+      console.log(
+        "Đang xử lý:",
+        record.record_id
+      );
+
+      console.log(
+        "TikTok:",
+        linkAir
+      );
+
+      try {
+        // ========================================================
+        // Gọi lại hàm TikTok đang có sẵn của bạn
+        // ========================================================
+
+        const metric =
+          await fetchTiktokVideoMetricsAction(
+            linkAir
+          );
+
+        if (!metric.success) {
+          throw new Error(
+            metric.message ||
+              "Không lấy được dữ liệu TikTok."
+          );
+        }
+
+        if (!metric.data) {
+          throw new Error(
+            "TikTok không trả về dữ liệu."
+          );
+        }
+
+        const data = metric.data;
+
+        console.log(
+          "TikTok data:",
+          data
+        );
+
+        // ========================================================
+        // 5. TÌM CÁC FIELD ĐÍCH TRONG LARK
+        // ========================================================
+
+        const fieldMap =
+          buildFieldAliasMap(fields);
+
+        const fieldName = {
+          title: pickRealFieldName(
+            fieldMap,
+            [
+              "Title",
+              "Video Title",
+            ]
+          ),
+
+          uploader: pickRealFieldName(
+            fieldMap,
+            [
+              "Uploader",
+              "Creator",
+              "Author",
+            ]
+          ),
+
+          viewCount: pickRealFieldName(
+            fieldMap,
+            [
+              "View Count",
+              "Views",
+              "Play Count",
+            ]
+          ),
+
+          commentCount: pickRealFieldName(
+            fieldMap,
+            [
+              "Comment Count",
+              "Comments",
+            ]
+          ),
+
+          collectionCount: pickRealFieldName(
+            fieldMap,
+            [
+              "Collection Count",
+              "Collections",
+              "Favorite Count",
+            ]
+          ),
+
+          likeCount: pickRealFieldName(
+            fieldMap,
+            [
+              "Like Count",
+              "Likes",
+              "Digg Count",
+            ]
+          ),
+
+          totalInteractionCount: pickRealFieldName(
+            fieldMap,
+            [
+              "Total Interaction Count",
+              "Interaction Count",
+            ]
+          ),
+
+          releaseTime: pickRealFieldName(
+            fieldMap,
+            [
+              "Release Time",
+              "Created Time",
+            ]
+          ),
+
+          shareCount: pickRealFieldName(
+            fieldMap,
+            [
+              "Share Count",
+              "Shares",
+            ]
+          ),
+
+          dataRetrievalTime: pickRealFieldName(
+            fieldMap,
+            [
+              "Data Retrieval Time",
+              "Retrieved At",
+            ]
+          ),
+
+          errorMessage: pickRealFieldName(
+            fieldMap,
+            [
+              "Error Message",
+            ]
+          ),
+        };
+
+        console.log(
+          "Resolved fields:",
+          fieldName
+        );
+
+        // ========================================================
+        // 6. TẠO DATA UPDATE
+        // ========================================================
+
+        const updateFields: Record<
+          string,
+          unknown
+        > = {};
+
+        if (fieldName.title) {
+          updateFields[fieldName.title] =
+            data.title;
+        }
+
+        if (fieldName.uploader) {
+          updateFields[fieldName.uploader] =
+            data.uploader;
+        }
+
+        if (fieldName.viewCount) {
+          updateFields[fieldName.viewCount] =
+            data.viewCount;
+        }
+
+        if (fieldName.commentCount) {
+          updateFields[fieldName.commentCount] =
+            data.commentCount;
+        }
+
+        if (fieldName.collectionCount) {
+          updateFields[fieldName.collectionCount] =
+            data.collectionCount;
+        }
+
+        if (fieldName.likeCount) {
+          updateFields[fieldName.likeCount] =
+            data.likeCount;
+        }
+
+        if (fieldName.totalInteractionCount) {
+          updateFields[
+            fieldName.totalInteractionCount
+          ] =
+            data.totalInteractionCount;
+        }
+
+     if (fieldName.releaseTime) {
+  const releaseTimestamp =
+    toLarkDatetime(data.releaseTime);
+
+  if (releaseTimestamp !== null) {
+    updateFields[fieldName.releaseTime] =
+      releaseTimestamp;
+  }
+}
+
+        if (fieldName.shareCount) {
+          updateFields[fieldName.shareCount] =
+            data.shareCount;
+        }
+
+      if (fieldName.dataRetrievalTime) {
+  const retrievalTimestamp =
+    toLarkDatetime(data.dataRetrievalTime);
+
+  if (retrievalTimestamp !== null) {
+    updateFields[fieldName.dataRetrievalTime] =
+      retrievalTimestamp;
+  }
+}
+
+        if (fieldName.errorMessage) {
+          updateFields[fieldName.errorMessage] = "";
+        }
+
+        // ========================================================
+        // Không có field để update
+        // ========================================================
+
+        if (
+          Object.keys(updateFields).length === 0
+        ) {
+          throw new Error(
+            "Không tìm thấy field chỉ số TikTok để cập nhật trong Lark Base."
+          );
+        }
+
+        console.log(
+          "UPDATE FIELDS:",
+          updateFields
+        );
+
+        // ========================================================
+        // 7. UPDATE CHÍNH RECORD
+        // ========================================================
+
+        const updated =
+          await client.updateRecord(
+            record.record_id,
+            updateFields
+          );
+
+        console.log(
+          "UPDATE SUCCESS:",
+          updated.record_id
+        );
+
+        results.push({
+          recordId:
+            record.record_id,
+
+          linkAir,
+
+          success: true,
+
+          title: data.title,
+          uploader: data.uploader,
+
+          viewCount:
+            data.viewCount,
+
+          commentCount:
+            data.commentCount,
+
+          collectionCount:
+            data.collectionCount,
+
+          likeCount:
+            data.likeCount,
+
+          shareCount:
+            data.shareCount,
+
+          totalInteractionCount:
+            data.totalInteractionCount,
+
+          releaseTime:
+            data.releaseTime,
+
+          dataRetrievalTime:
+            data.dataRetrievalTime,
+
+          errorMessage: "",
+        });
+
+      } catch (err: any) {
+        const errorMessage =
+          err?.message ||
+          String(err) ||
+          "Lỗi không xác định.";
+
+        console.error(
+          `TikTok ERROR ${record.record_id}:`,
+          err
+        );
+
+        results.push({
+          recordId:
+            record.record_id,
+
+          linkAir,
+
+          success: false,
+
+          errorMessage,
+        });
+
+        // Ghi lỗi vào Base nếu có field
+        try {
+          const fieldMap =
+            buildFieldAliasMap(fields);
+
+          const errorField =
+            pickRealFieldName(
+              fieldMap,
+              ["Error Message"]
+            );
+
+          if (errorField) {
+            await client.updateRecord(
+              record.record_id,
+              {
+                [errorField]:
+                  errorMessage,
+              }
+            );
+          }
+        } catch (updateError) {
+          console.error(
+            "Không ghi được Error Message:",
+            updateError
+          );
+        }
+
+        // Không dừng toàn bộ
+        continue;
+      }
+    }
+
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "SYNC FINISHED"
+    );
+
+    console.log(
+      `TikTok records: ${tiktokRecords.length}`
+    );
+
+    console.log(
+      `Success: ${
+        results.filter(
+          (r) => r.success
+        ).length
+      }`
+    );
+
+    console.log(
+      `Error: ${
+        results.filter(
+          (r) => !r.success
+        ).length
+      }`
+    );
+
+    console.log(
+      "========================================"
+    );
+
+    return {
+      success: true,
+      data: toPlain(results),
+    };
+
+  } catch (err: any) {
+
+    console.error(
+      "SYNC ALL TIKTOK ERROR:",
+      err
+    );
+
+    return {
+      success: false,
+
+      message:
+        err?.message ||
+        String(err) ||
+        "Lỗi khi quét toàn bộ record TikTok.",
+    };
+  }
+}
 export async function fetchTiktokProfileStatsAction(input: string): Promise<ActionResult<TiktokProfileStats>> {
   try {
     const { handle, profileUrl } = normalizeTiktokProfileInput(input);
@@ -746,7 +1842,21 @@ export async function importTiktokProfileStatsToLarkBaseAction(input: string): P
     const client = getLarkClient();
     const fields = await client.listFields();
     const fieldMap = buildFieldAliasMap(fields);
+function getFieldByName(
+  fields: LarkField[],
+  name: string
+): LarkField | null {
+  const normalized = normalizeFieldLabel(name);
 
+  return (
+    fields.find(
+      (field) =>
+        normalizeFieldLabel(
+          field.field_name
+        ) === normalized
+    ) ?? null
+  );
+}
     const fieldName = {
       username: pickRealFieldName(fieldMap, ["username", "user name", "tiktok username", "handle"]),
       nickname: pickRealFieldName(fieldMap, ["nickname", "display name", "name"]),

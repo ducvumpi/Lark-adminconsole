@@ -221,18 +221,49 @@ async listFields(): Promise<LarkField[]> {
   }
 
 
-  async updateRecord(recordId: string, fields: Record<string, unknown>): Promise<LarkRecord> {
-    const headers = await this.authHeader();
-    const res = await this.http.put<any>(
-      this.tablePath(`/records/${recordId}`),
-      { fields },
-      { headers }
-    );
-    if (res.data.code !== 0) {
-      throw new LarkApiError(`Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`);
-    }
-    return res.data.data.record;
+async updateRecord(
+  recordId: string,
+  fields: Record<string, unknown>
+): Promise<LarkRecord> {
+  const headers = await this.authHeader();
+
+  // Chuẩn hóa dữ liệu trước khi gửi sang Lark
+  const sanitizedFields: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(fields)) {
+    sanitizedFields[key] = sanitizeTextField(value);
   }
+
+  console.log("UPDATE RECORD:", recordId);
+
+  console.dir(
+    sanitizedFields,
+    { depth: null }
+  );
+
+  const res = await this.http.put<any>(
+    this.tablePath(`/records/${recordId}`),
+    {
+      fields: sanitizedFields,
+    },
+    {
+      headers,
+    }
+  );
+
+  if (res.data.code !== 0) {
+    console.error(
+      "LARK UPDATE ERROR:",
+      res.data
+    );
+
+    throw new LarkApiError(
+      `Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`
+    );
+  }
+
+  return res.data.data.record;
+}
 
   async deleteRecord(recordId: string): Promise<void> {
     const headers = await this.authHeader();
