@@ -649,8 +649,7 @@ function pickRealFieldName(fieldMap: Map<string, string>, aliases: string[]): st
 }
 
 export async function fetchTiktokVideoMetricsAction(
-  input: string,
-  userAgent?: string // NEW: cho phép truyền UA khác nhau mỗi lần retry
+  input: string
 ): Promise<ActionResult<TiktokVideoMetrics>> {
   try {
     let videoUrl = normalizeTikTokInput(input);
@@ -663,82 +662,130 @@ export async function fetchTiktokVideoMetricsAction(
       videoUrl = `https://${videoUrl}`;
     }
 
-    const ua = userAgent || TIKTOK_USER_AGENTS[0]; // fallback nếu không truyền
-
-    console.log("TikTok URL ban đầu:", videoUrl);
-    console.log("User-Agent dùng lần này:", ua);
+    console.log(
+      "TikTok URL ban đầu:",
+      videoUrl
+    );
 
     // ============================================================
     // Resolve TikTok short URL
     // ============================================================
 
-    const isShortTikTokUrl = /^(https?:\/\/)?(vt|vm)\.tiktok\.com\//i.test(videoUrl);
+    const isShortTikTokUrl =
+      /^(https?:\/\/)?(vt|vm)\.tiktok\.com\//i.test(
+        videoUrl
+      );
 
     if (isShortTikTokUrl) {
-      const redirectResponse = await fetch(videoUrl, {
-        method: "GET",
-        headers: {
-          "User-Agent": ua,
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        redirect: "follow",
-      });
+      const redirectResponse = await fetch(
+        videoUrl,
+        {
+          method: "GET",
 
-      console.log("Short URL response:", redirectResponse.status);
-      console.log("Resolved URL:", redirectResponse.url);
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+
+            "Accept-Language":
+              "en-US,en;q=0.9",
+          },
+
+          redirect: "follow",
+        }
+      );
+
+      console.log(
+        "Short URL response:",
+        redirectResponse.status
+      );
+
+      console.log(
+        "Resolved URL:",
+        redirectResponse.url
+      );
 
       if (redirectResponse.url) {
         videoUrl = redirectResponse.url;
       }
     }
 
-    console.log("TikTok URL sau resolve:", videoUrl);
+    console.log(
+      "TikTok URL sau resolve:",
+      videoUrl
+    );
 
     // ============================================================
     // Lấy Video ID
     // ============================================================
 
     const videoIdMatch =
-      videoUrl.match(/tiktok\.com\/@[^/]*\/video\/(\d+)/i) ||
-      videoUrl.match(/tiktok\.com\/video\/(\d+)/i) ||
-      videoUrl.match(/[?&](?:share_item_id|item_id)=(\d+)/i);
+      videoUrl.match(
+        /tiktok\.com\/@[^/]*\/video\/(\d+)/i
+      ) ||
+      videoUrl.match(
+        /tiktok\.com\/video\/(\d+)/i
+      ) ||
+      videoUrl.match(
+        /[?&](?:share_item_id|item_id)=(\d+)/i
+      );
 
     if (!videoIdMatch) {
-      throw new Error(`Không lấy được video ID từ URL TikTok: ${videoUrl}`);
+      throw new Error(
+        `Không lấy được video ID từ URL TikTok: ${videoUrl}`
+      );
     }
 
-    const videoId = videoIdMatch[1];
-    console.log("TikTok video ID:", videoId);
+    const videoId =
+      videoIdMatch[1];
+
+    console.log(
+      "TikTok video ID:",
+      videoId
+    );
 
     // ============================================================
     // 4. Đọc trang TikTok
     // ============================================================
 
-    const retrievalTime = new Date().toISOString();
+    const retrievalTime =
+      new Date().toISOString();
 
     const response = await fetch(videoUrl, {
       headers: {
-        "User-Agent": ua,
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.tiktok.com/",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+
+        "Accept-Language":
+          "en-US,en;q=0.9",
+
+        Referer:
+          "https://www.tiktok.com/",
       },
+
       redirect: "follow",
     });
 
     if (!response.ok) {
-      throw new Error(`TikTok trả về trạng thái ${response.status} khi đọc video ${videoId}.`);
+      throw new Error(
+        `TikTok trả về trạng thái ${response.status} khi đọc video ${videoId}.`
+      );
     }
 
     // ============================================================
     // 5. Parse HTML
     // ============================================================
 
-    const html = await response.text();
+    const html =
+      await response.text();
+
     const hydration = lookupNestedScriptObject(html);
 
+    // Phát hiện trang chặn bot / captcha / trang rút gọn không có dữ liệu SSR
     if (!hydration) {
       const looksLikeChallenge =
-        html.includes("captcha") || html.includes("verify") || html.length < 5000;
+        html.includes("captcha") ||
+        html.includes("verify") ||
+        html.length < 5000; // trang thật luôn rất nặng, trang chặn thường rất nhẹ
       throw new Error(
         looksLikeChallenge
           ? "TikTok trả về trang xác minh/chặn bot (không có dữ liệu SSR). Thử lại sau hoặc đổi User-Agent."
@@ -748,6 +795,7 @@ export async function fetchTiktokVideoMetricsAction(
 
     const scope = hydration["__DEFAULT_SCOPE__"] ?? hydration ?? {};
 
+    // CHỈ lấy đúng key video-detail, KHÔNG fallback về `scope` (rỗng vẫn truthy → dữ liệu giả)
     const candidateVideo =
       (scope["webapp.video-detail"] as Record<string, unknown> | undefined) ??
       (deepFindValue(scope, "itemInfo") as Record<string, unknown> | undefined);
@@ -761,66 +809,233 @@ export async function fetchTiktokVideoMetricsAction(
     // ============================================================
     // 6. Đọc chỉ số
     // ============================================================
+    console.log("===== TIKTOK DEBUG =====");
 
+    console.log(
+      "Video URL:",
+      videoUrl
+    );
+
+    console.log(
+      "Video ID:",
+      videoId
+    );
+
+    console.log(
+      "Candidate video:"
+    );
+
+    console.dir(
+      candidateVideo,
+      { depth: 8 }
+    );
+
+    console.log(
+      "playCount:",
+      deepFindValue(
+        candidateVideo,
+        "playCount"
+      )
+    );
+
+    console.log(
+      "viewCount:",
+      deepFindValue(
+        candidateVideo,
+        "viewCount"
+      )
+    );
+
+    console.log(
+      "diggCount:",
+      deepFindValue(
+        candidateVideo,
+        "diggCount"
+      )
+    );
+
+    console.log(
+      "commentCount:",
+      deepFindValue(
+        candidateVideo,
+        "commentCount"
+      )
+    );
+
+    console.log(
+      "shareCount:",
+      deepFindValue(
+        candidateVideo,
+        "shareCount"
+      )
+    );
+
+    console.log(
+      "collectCount:",
+      deepFindValue(
+        candidateVideo,
+        "collectCount"
+      )
+    );
+
+    console.log(
+      "========================"
+    );
     const title =
-      String(deepFindValue(candidateVideo, "title") ?? deepFindValue(candidateVideo, "desc") ?? "") || "—";
-
-    const uploader =
       String(
-        deepFindValue(candidateVideo, "authorName") ??
-        deepFindValue(candidateVideo, "uniqueId") ??
-        deepFindValue(candidateVideo, "nickname") ??
+        deepFindValue(
+          candidateVideo,
+          "title"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "desc"
+        ) ??
         ""
       ) || "—";
 
-    const viewCount = getNumber(
-      deepFindValue(candidateVideo, "playCount") ?? deepFindValue(candidateVideo, "viewCount")
-    );
+    const uploader =
+      String(
+        deepFindValue(
+          candidateVideo,
+          "authorName"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "uniqueId"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "nickname"
+        ) ??
+        ""
+      ) || "—";
 
-    const commentCount = getNumber(deepFindValue(candidateVideo, "commentCount"));
+    const viewCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "playCount"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "viewCount"
+        )
+      );
 
-    const collectionCount = getNumber(
-      deepFindValue(candidateVideo, "collectCount") ?? deepFindValue(candidateVideo, "favoriteCount")
-    );
+    const commentCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "commentCount"
+        )
+      );
 
-    const likeCount = getNumber(
-      deepFindValue(candidateVideo, "diggCount") ?? deepFindValue(candidateVideo, "likeCount")
-    );
+    const collectionCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "collectCount"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "favoriteCount"
+        )
+      );
 
-    const shareCount = getNumber(deepFindValue(candidateVideo, "shareCount"));
+    const likeCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "diggCount"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "likeCount"
+        )
+      );
+
+    const shareCount =
+      getNumber(
+        deepFindValue(
+          candidateVideo,
+          "shareCount"
+        )
+      );
 
     const releaseTime =
-      String(deepFindValue(candidateVideo, "createTime") ?? deepFindValue(candidateVideo, "releaseTime") ?? "") ||
-      "—";
+      String(
+        deepFindValue(
+          candidateVideo,
+          "createTime"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "releaseTime"
+        ) ??
+        ""
+      ) || "—";
 
-    const totalInteractionCount = viewCount + commentCount + likeCount + shareCount + collectionCount;
+    const totalInteractionCount =
+      viewCount +
+      commentCount +
+      likeCount +
+      shareCount +
+      collectionCount;
 
     // ============================================================
     // 7. Tạo payload
     // ============================================================
 
     const payload: TiktokVideoMetrics = {
-      title: String(title).trim() || "—",
-      uploader: String(uploader).trim() || "—",
+      title:
+        String(title).trim() || "—",
+
+      uploader:
+        String(uploader).trim() || "—",
+
       viewCount,
+
       commentCount,
+
       collectionCount,
+
       likeCount,
+
       totalInteractionCount,
-      releaseTime: String(releaseTime).trim() || "—",
+
+      releaseTime:
+        String(releaseTime).trim() || "—",
+
       shareCount,
-      dataRetrievalTime: retrievalTime,
+
+      dataRetrievalTime:
+        retrievalTime,
+
       errorMessage: "",
     };
 
-    console.log("TikTok metrics:", payload);
+    console.log(
+      "TikTok metrics:",
+      payload
+    );
 
-    return { success: true, data: toPlain(payload) };
+    return {
+      success: true,
+      data: toPlain(payload),
+    };
+
   } catch (err: any) {
-    console.error("TikTok metrics error:", err);
+    console.error(
+      "TikTok metrics error:",
+      err
+    );
+
     return {
       success: false,
-      message: err?.message || "Lỗi không xác định khi đọc dữ liệu video TikTok.",
+      message:
+        err?.message ||
+        "Lỗi không xác định khi đọc dữ liệu video TikTok.",
     };
   }
 }

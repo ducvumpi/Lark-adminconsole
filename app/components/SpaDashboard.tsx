@@ -8,7 +8,7 @@ import RecordsManager from "@/app/components/RecordsManager";
 import ImportWizard from "@/app/components/ImportWizard";
 import TiktokImportPanel from "@/app/components/TiktokImportPanel";
 import SettingsForm from "@/app/components/SettingsForm";
-
+import { useRouter } from "next/navigation";
 const FIELD_TYPE_LABEL: Record<string, string> = {
     1: "Single Select",
     2: "Multi Select",
@@ -58,7 +58,21 @@ export default function SpaDashboard({
         message: string;
     } | null>(null);
     const [isProgressHidden, setIsProgressHidden] = useState(false);
+    const router = useRouter();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            const res = await fetch("/api/auth/logout", { method: "POST" });
+            if (!res.ok) throw new Error("Đăng xuất thất bại");
+            router.push("/login");
+            router.refresh();
+        } catch (err) {
+            console.error(err);
+            setIsLoggingOut(false);
+        }
+    };
     const fields = useMemo(() => fieldsResult.success ? fieldsResult.data ?? [] : [], [fieldsResult]);
     const records = useMemo(() => recordsResult.success ? recordsResult.data ?? { items: [], hasMore: false, total: 0 } : { items: [], hasMore: false, total: 0 }, [recordsResult]);
     const progressPercent = importProgress?.total
@@ -110,6 +124,14 @@ export default function SpaDashboard({
                 <div className="sidebar-footer">
                     <div className="sidebar-footer-title">Status</div>
                     <div className="sidebar-footer-value">{settings.complete ? "Connected" : "Needs setup"}</div>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-200 disabled:opacity-50"
+                    >
+                        {isLoggingOut ? "Đang đăng xuất..." : "🚪 Đăng xuất"}
+                    </button>
                 </div>
             </aside>
 
