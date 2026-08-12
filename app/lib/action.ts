@@ -155,31 +155,31 @@ export async function listFieldsAction(): Promise<ActionResult<LarkField[]>> {
 
 // ─── Records ─────────────────────────────────────────────────────────────────
 
-export async function listRecordsAction(options: { filter?: string; pageSize?: number; pageToken?: string; }) { 
-  try { 
-    const client = getLarkClient(); 
+export async function listRecordsAction(options: { filter?: string; pageSize?: number; pageToken?: string; }) {
+  try {
+    const client = getLarkClient();
     // Luôn ép lấy tối đa 100 bản ghi/trang để tải nhanh nhất
     const result = await client.listRecords({
       ...options,
-      pageSize: options.pageSize ?? 100 
-    }); 
-    return { success: true, data: result }; 
-  } catch (err: any) { 
-    return { success: false, message: err.message || "Lỗi không xác định" }; 
-  } 
+      pageSize: options.pageSize ?? 100
+    });
+    return { success: true, data: result };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Lỗi không xác định" };
+  }
 }
 
 
 export async function findDuplicateBudgetRecordsAction(): Promise<ActionResult<{ budgetName: string; records: LarkRecord[] }[]>> {
   try {
     const client = getLarkClient();
-  const allRecords: LarkRecord[] = [];
-let pageToken: string | undefined;
-do {
-  const result = await client.listRecords({ pageSize: 100, pageToken });
-  allRecords.push(...result.items);
-  pageToken = result.hasMore ? result.pageToken : undefined;
-} while (pageToken);
+    const allRecords: LarkRecord[] = [];
+    let pageToken: string | undefined;
+    do {
+      const result = await client.listRecords({ pageSize: 100, pageToken });
+      allRecords.push(...result.items);
+      pageToken = result.hasMore ? result.pageToken : undefined;
+    } while (pageToken);
 
     const groups = new Map<string, LarkRecord[]>();
     for (const record of allRecords) {
@@ -697,96 +697,96 @@ export async function fetchTiktokVideoMetricsAction(
   input: string
 ): Promise<ActionResult<TiktokVideoMetrics>> {
   try {
-   let videoUrl = normalizeTikTokInput(input);
+    let videoUrl = normalizeTikTokInput(input);
 
-if (!videoUrl) {
-  throw new Error("Link TikTok đang trống.");
-}
-
-if (!/^https?:\/\//i.test(videoUrl)) {
-  videoUrl = `https://${videoUrl}`;
-}
-
-console.log(
-  "TikTok URL ban đầu:",
-  videoUrl
-);
-
-// ============================================================
-// Resolve TikTok short URL
-// ============================================================
-
-const isShortTikTokUrl =
-  /^(https?:\/\/)?(vt|vm)\.tiktok\.com\//i.test(
-    videoUrl
-  );
-
-if (isShortTikTokUrl) {
-  const redirectResponse = await fetch(
-    videoUrl,
-    {
-      method: "GET",
-
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-
-        "Accept-Language":
-          "en-US,en;q=0.9",
-      },
-
-      redirect: "follow",
+    if (!videoUrl) {
+      throw new Error("Link TikTok đang trống.");
     }
-  );
 
-  console.log(
-    "Short URL response:",
-    redirectResponse.status
-  );
+    if (!/^https?:\/\//i.test(videoUrl)) {
+      videoUrl = `https://${videoUrl}`;
+    }
 
-  console.log(
-    "Resolved URL:",
-    redirectResponse.url
-  );
+    console.log(
+      "TikTok URL ban đầu:",
+      videoUrl
+    );
 
-  if (redirectResponse.url) {
-    videoUrl = redirectResponse.url;
-  }
-}
+    // ============================================================
+    // Resolve TikTok short URL
+    // ============================================================
 
-console.log(
-  "TikTok URL sau resolve:",
-  videoUrl
-);
+    const isShortTikTokUrl =
+      /^(https?:\/\/)?(vt|vm)\.tiktok\.com\//i.test(
+        videoUrl
+      );
 
-// ============================================================
-// Lấy Video ID
-// ============================================================
+    if (isShortTikTokUrl) {
+      const redirectResponse = await fetch(
+        videoUrl,
+        {
+          method: "GET",
 
-const videoIdMatch =
-  videoUrl.match(
-    /tiktok\.com\/@[^/]*\/video\/(\d+)/i
-  ) ||
-  videoUrl.match(
-    /tiktok\.com\/video\/(\d+)/i
-  ) ||
-  videoUrl.match(
-    /[?&](?:share_item_id|item_id)=(\d+)/i
-  );
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
 
-if (!videoIdMatch) {
-  throw new Error(
-    `Không lấy được video ID từ URL TikTok: ${videoUrl}`
-  );
-}
+            "Accept-Language":
+              "en-US,en;q=0.9",
+          },
 
-const videoId =
-  videoIdMatch[1];
+          redirect: "follow",
+        }
+      );
 
-console.log(
-  "TikTok video ID:",
-  videoId
-);
+      console.log(
+        "Short URL response:",
+        redirectResponse.status
+      );
+
+      console.log(
+        "Resolved URL:",
+        redirectResponse.url
+      );
+
+      if (redirectResponse.url) {
+        videoUrl = redirectResponse.url;
+      }
+    }
+
+    console.log(
+      "TikTok URL sau resolve:",
+      videoUrl
+    );
+
+    // ============================================================
+    // Lấy Video ID
+    // ============================================================
+
+    const videoIdMatch =
+      videoUrl.match(
+        /tiktok\.com\/@[^/]*\/video\/(\d+)/i
+      ) ||
+      videoUrl.match(
+        /tiktok\.com\/video\/(\d+)/i
+      ) ||
+      videoUrl.match(
+        /[?&](?:share_item_id|item_id)=(\d+)/i
+      );
+
+    if (!videoIdMatch) {
+      throw new Error(
+        `Không lấy được video ID từ URL TikTok: ${videoUrl}`
+      );
+    }
+
+    const videoId =
+      videoIdMatch[1];
+
+    console.log(
+      "TikTok video ID:",
+      videoId
+    );
 
     // ============================================================
     // 4. Đọc trang TikTok
@@ -823,115 +823,120 @@ console.log(
     const html =
       await response.text();
 
-    const hydration =
-      lookupNestedScriptObject(html);
+    const hydration = lookupNestedScriptObject(html);
 
-    const scope =
-      hydration?.["__DEFAULT_SCOPE__"] ??
-      hydration ??
-      {};
+    // Phát hiện trang chặn bot / captcha / trang rút gọn không có dữ liệu SSR
+    if (!hydration) {
+      const looksLikeChallenge =
+        html.includes("captcha") ||
+        html.includes("verify") ||
+        html.length < 5000; // trang thật luôn rất nặng, trang chặn thường rất nhẹ
+      throw new Error(
+        looksLikeChallenge
+          ? "TikTok trả về trang xác minh/chặn bot (không có dữ liệu SSR). Thử lại sau hoặc đổi User-Agent."
+          : "Không tìm thấy script __UNIVERSAL_DATA_FOR_REHYDRATION__ trong HTML."
+      );
+    }
 
-    const candidates = [
-      scope["webapp.video-detail"],
-      scope["webapp.user-detail"],
-      scope,
-      deepFindValue(
-        scope,
-        "itemInfo"
-      ),
-    ];
+    const scope = hydration["__DEFAULT_SCOPE__"] ?? hydration ?? {};
 
+    // CHỈ lấy đúng key video-detail, KHÔNG fallback về `scope` (rỗng vẫn truthy → dữ liệu giả)
     const candidateVideo =
-      candidates.find(Boolean) as
-        | Record<string, unknown>
-        | undefined;
+      (scope["webapp.video-detail"] as Record<string, unknown> | undefined) ??
+      (deepFindValue(scope, "itemInfo") as Record<string, unknown> | undefined);
+
+    if (!candidateVideo) {
+      throw new Error(
+        "TikTok không trả về dữ liệu video-detail (có thể do rate-limit/bot detection). Thử lại sau vài giây."
+      );
+    }
 
     // ============================================================
     // 6. Đọc chỉ số
     // ============================================================
-console.log("===== TIKTOK DEBUG =====");
+    console.log("===== TIKTOK DEBUG =====");
 
-console.log(
-  "Video URL:",
-  videoUrl
-);
+    console.log(
+      "Video URL:",
+      videoUrl
+    );
 
-console.log(
-  "Video ID:",
-  videoId
-);
+    console.log(
+      "Video ID:",
+      videoId
+    );
 
-console.log(
-  "Candidate video:"
-);
+    console.log(
+      "Candidate video:"
+    );
 
-console.dir(
-  candidateVideo,
-  { depth: 8 }
-);
+    console.dir(
+      candidateVideo,
+      { depth: 8 }
+    );
 
-console.log(
-  "playCount:",
-  deepFindValue(
-    candidateVideo,
-    "playCount"
-  )
-);
+    console.log(
+      "playCount:",
+      deepFindValue(
+        candidateVideo,
+        "playCount"
+      )
+    );
 
-console.log(
-  "viewCount:",
-  deepFindValue(
-    candidateVideo,
-    "viewCount"
-  )
-);
+    console.log(
+      "viewCount:",
+      deepFindValue(
+        candidateVideo,
+        "viewCount"
+      )
+    );
 
-console.log(
-  "diggCount:",
-  deepFindValue(
-    candidateVideo,
-    "diggCount"
-  )
-);
+    console.log(
+      "diggCount:",
+      deepFindValue(
+        candidateVideo,
+        "diggCount"
+      )
+    );
 
-console.log(
-  "commentCount:",
-  deepFindValue(
-    candidateVideo,
-    "commentCount"
-  )
-);
+    console.log(
+      "commentCount:",
+      deepFindValue(
+        candidateVideo,
+        "commentCount"
+      )
+    );
 
-console.log(
-  "shareCount:",
-  deepFindValue(
-    candidateVideo,
-    "shareCount"
-  )
-);
+    console.log(
+      "shareCount:",
+      deepFindValue(
+        candidateVideo,
+        "shareCount"
+      )
+    );
 
-console.log(
-  "collectCount:",
-  deepFindValue(
-    candidateVideo,
-    "collectCount"
-  )
-);
+    console.log(
+      "collectCount:",
+      deepFindValue(
+        candidateVideo,
+        "collectCount"
+      )
+    );
 
-console.log(
-  "========================"
-);
+    console.log(
+      "========================"
+    );
     const title =
       String(
         deepFindValue(
           candidateVideo,
           "title"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "desc"
-          ) ??
-          ""
+        deepFindValue(
+          candidateVideo,
+          "desc"
+        ) ??
+        ""
       ) || "—";
 
     const uploader =
@@ -940,15 +945,15 @@ console.log(
           candidateVideo,
           "authorName"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "uniqueId"
-          ) ??
-          deepFindValue(
-            candidateVideo,
-            "nickname"
-          ) ??
-          ""
+        deepFindValue(
+          candidateVideo,
+          "uniqueId"
+        ) ??
+        deepFindValue(
+          candidateVideo,
+          "nickname"
+        ) ??
+        ""
       ) || "—";
 
     const viewCount =
@@ -957,10 +962,10 @@ console.log(
           candidateVideo,
           "playCount"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "viewCount"
-          )
+        deepFindValue(
+          candidateVideo,
+          "viewCount"
+        )
       );
 
     const commentCount =
@@ -977,10 +982,10 @@ console.log(
           candidateVideo,
           "collectCount"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "favoriteCount"
-          )
+        deepFindValue(
+          candidateVideo,
+          "favoriteCount"
+        )
       );
 
     const likeCount =
@@ -989,10 +994,10 @@ console.log(
           candidateVideo,
           "diggCount"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "likeCount"
-          )
+        deepFindValue(
+          candidateVideo,
+          "likeCount"
+        )
       );
 
     const shareCount =
@@ -1009,11 +1014,11 @@ console.log(
           candidateVideo,
           "createTime"
         ) ??
-          deepFindValue(
-            candidateVideo,
-            "releaseTime"
-          ) ??
-          ""
+        deepFindValue(
+          candidateVideo,
+          "releaseTime"
+        ) ??
+        ""
       ) || "—";
 
     const totalInteractionCount =
@@ -1253,6 +1258,9 @@ function toLarkDatetime(value: unknown): number | null {
 
   return null;
 }
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 export async function syncAllTiktokRecordsAction(): Promise<
   ActionResult<SyncTiktokRecordResult[]>
 > {
@@ -1310,88 +1318,88 @@ ${fields.map((f) => f.field_name).join(", ")}`
     let pageToken: string | undefined;
 
     do {
-  console.log(
-    "Đang lấy records, pageToken:",
-    pageToken || "(first page)"
-  );
+      console.log(
+        "Đang lấy records, pageToken:",
+        pageToken || "(first page)"
+      );
 
-  const result = await client.listRecords({
-    pageSize: 100,
-    pageToken,
-  });
+      const result = await client.listRecords({
+        pageSize: 100,
+        pageToken,
+      });
 
-  console.log(
-    `Nhận được ${result.items.length} records`
-  );
+      console.log(
+        `Nhận được ${result.items.length} records`
+      );
 
-  allRecords.push(...result.items);
+      allRecords.push(...result.items);
 
-  pageToken = result.hasMore
-    ? result.pageToken
-    : undefined;
+      pageToken = result.hasMore
+        ? result.pageToken
+        : undefined;
 
-} while (pageToken);
+    } while (pageToken);
 
-console.log(
-  `TỔNG RECORD: ${allRecords.length}`
-);
-const testRecords = allRecords.slice(0, 10);
+    console.log(
+      `TỔNG RECORD: ${allRecords.length}`
+    );
+    const testRecords = allRecords.slice(0, 10);
 
-console.log(
-  `TEST MODE: chỉ xử lý ${testRecords.length} record đầu tiên`
-);
+    console.log(
+      `TEST MODE: chỉ xử lý ${testRecords.length} record đầu tiên`
+    );
 
     // ============================================================
     // 3. LỌC RECORD CÓ LINK AIR
     // ============================================================
 
-   const tiktokRecords: {
-  record: LarkRecord;
-  linkAir: string;
-}[] = [];
+    const tiktokRecords: {
+      record: LarkRecord;
+      linkAir: string;
+    }[] = [];
 
-for (const record of testRecords) {
-  const rawValue = record.fields[linkAirFieldName];
+    for (const record of testRecords) {
+      const rawValue = record.fields[linkAirFieldName];
 
-  console.log("================================");
-  console.log("RECORD ID:", record.record_id);
+      console.log("================================");
+      console.log("RECORD ID:", record.record_id);
 
-  console.log("FIELD NAME:", linkAirFieldName);
+      console.log("FIELD NAME:", linkAirFieldName);
 
-  console.log("RAW LINK AIR:");
-  console.dir(rawValue, { depth: null });
+      console.log("RAW LINK AIR:");
+      console.dir(rawValue, { depth: null });
 
-  const linkAir = extractLinkAir(rawValue);
+      const linkAir = extractLinkAir(rawValue);
 
-  console.log("EXTRACTED LINK:", linkAir);
+      console.log("EXTRACTED LINK:", linkAir);
 
-  if (!linkAir) {
-    console.log("❌ Không extract được URL");
-    continue;
-  }
+      if (!linkAir) {
+        console.log("❌ Không extract được URL");
+        continue;
+      }
 
-  console.log("URL:", linkAir);
+      console.log("URL:", linkAir);
 
-  const isTikTok = isTikTokVideoUrl(linkAir);
+      const isTikTok = isTikTokVideoUrl(linkAir);
 
-  console.log("IS TIKTOK:", isTikTok);
+      console.log("IS TIKTOK:", isTikTok);
 
-  if (!isTikTok) {
-    console.log("⚠️ Có URL nhưng không phải TikTok");
-    continue;
-  }
+      if (!isTikTok) {
+        console.log("⚠️ Có URL nhưng không phải TikTok");
+        continue;
+      }
 
-  console.log("✅ TIKTOK RECORD");
+      console.log("✅ TIKTOK RECORD");
 
-  tiktokRecords.push({
-    record,
-    linkAir,
-  });
-}
+      tiktokRecords.push({
+        record,
+        linkAir,
+      });
+    }
 
-console.log(
-  `TỔNG LINK TIKTOK: ${tiktokRecords.length}`
-);
+    console.log(
+      `TỔNG LINK TIKTOK: ${tiktokRecords.length}`
+    );
 
     // ============================================================
     // 4. ĐỌC TỪNG VIDEO
@@ -1422,15 +1430,20 @@ console.log(
         // Gọi lại hàm TikTok đang có sẵn của bạn
         // ========================================================
 
-        const metric =
+        let metric =
           await fetchTiktokVideoMetricsAction(
             linkAir
           );
 
+        if (!metric.success && /chặn|rate-limit|xác minh/i.test(metric.message ?? "")) {
+          await sleep(3000);
+          metric = await fetchTiktokVideoMetricsAction(linkAir);
+        }
+
         if (!metric.success) {
           throw new Error(
             metric.message ||
-              "Không lấy được dữ liệu TikTok."
+            "Không lấy được dữ liệu TikTok."
           );
         }
 
@@ -1598,30 +1611,30 @@ console.log(
             data.totalInteractionCount;
         }
 
-     if (fieldName.releaseTime) {
-  const releaseTimestamp =
-    toLarkDatetime(data.releaseTime);
+        if (fieldName.releaseTime) {
+          const releaseTimestamp =
+            toLarkDatetime(data.releaseTime);
 
-  if (releaseTimestamp !== null) {
-    updateFields[fieldName.releaseTime] =
-      releaseTimestamp;
-  }
-}
+          if (releaseTimestamp !== null) {
+            updateFields[fieldName.releaseTime] =
+              releaseTimestamp;
+          }
+        }
 
         if (fieldName.shareCount) {
           updateFields[fieldName.shareCount] =
             data.shareCount;
         }
 
-      if (fieldName.dataRetrievalTime) {
-  const retrievalTimestamp =
-    toLarkDatetime(data.dataRetrievalTime);
+        if (fieldName.dataRetrievalTime) {
+          const retrievalTimestamp =
+            toLarkDatetime(data.dataRetrievalTime);
 
-  if (retrievalTimestamp !== null) {
-    updateFields[fieldName.dataRetrievalTime] =
-      retrievalTimestamp;
-  }
-}
+          if (retrievalTimestamp !== null) {
+            updateFields[fieldName.dataRetrievalTime] =
+              retrievalTimestamp;
+          }
+        }
 
         if (fieldName.errorMessage) {
           updateFields[fieldName.errorMessage] = "";
@@ -1764,18 +1777,16 @@ console.log(
     );
 
     console.log(
-      `Success: ${
-        results.filter(
-          (r) => r.success
-        ).length
+      `Success: ${results.filter(
+        (r) => r.success
+      ).length
       }`
     );
 
     console.log(
-      `Error: ${
-        results.filter(
-          (r) => !r.success
-        ).length
+      `Error: ${results.filter(
+        (r) => !r.success
+      ).length
       }`
     );
 
@@ -1842,21 +1853,21 @@ export async function importTiktokProfileStatsToLarkBaseAction(input: string): P
     const client = getLarkClient();
     const fields = await client.listFields();
     const fieldMap = buildFieldAliasMap(fields);
-function getFieldByName(
-  fields: LarkField[],
-  name: string
-): LarkField | null {
-  const normalized = normalizeFieldLabel(name);
+    function getFieldByName(
+      fields: LarkField[],
+      name: string
+    ): LarkField | null {
+      const normalized = normalizeFieldLabel(name);
 
-  return (
-    fields.find(
-      (field) =>
-        normalizeFieldLabel(
-          field.field_name
-        ) === normalized
-    ) ?? null
-  );
-}
+      return (
+        fields.find(
+          (field) =>
+            normalizeFieldLabel(
+              field.field_name
+            ) === normalized
+        ) ?? null
+      );
+    }
     const fieldName = {
       username: pickRealFieldName(fieldMap, ["username", "user name", "tiktok username", "handle"]),
       nickname: pickRealFieldName(fieldMap, ["nickname", "display name", "name"]),
