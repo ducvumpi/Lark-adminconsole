@@ -46,9 +46,9 @@ class LarkApiError extends Error { }
 function sanitizeTextField(value: unknown): unknown {
   // Nếu là null hoặc undefined, trả về chuỗi rỗng để xóa trắng ô
   if (value === null || value === undefined) {
-    return ""; 
+    return "";
   }
-  
+
   // Nếu vô tình truyền vào Object (ví dụ: dữ liệu từ API khác chứa ngày tháng, nested object)
   if (typeof value === "object") {
     // Kiểm tra nếu đã đúng cấu trúc Rich Text Array của Lark thì giữ nguyên
@@ -58,7 +58,7 @@ function sanitizeTextField(value: unknown): unknown {
     // Nếu là object khác, ép kiểu về chuỗi JSON để tránh crash
     return JSON.stringify(value);
   }
-  
+
   // Chuyển các kiểu dữ liệu khác (như boolean, số) thành string nếu mapping nhầm vào ô chữ
   return String(value);
 }
@@ -111,40 +111,45 @@ export class LarkBaseClient {
     return `/bitable/v1/apps/${baseAppToken}/tables/${tableId}${suffix}`;
   }
 
-async listFields(): Promise<LarkField[]> {
-  const headers = await this.authHeader();
+  async listFields(): Promise<LarkField[]> {
+    const headers = await this.authHeader();
 
-  const allFields: LarkField[] = [];
-  let pageToken: string | undefined;
+    const allFields: LarkField[] = [];
+    let pageToken: string | undefined;
 
-  do {
-    const params: Record<string, unknown> = { page_size: 100 };
-    if (pageToken) params.page_token = pageToken;
+    do {
+      const params: Record<string, unknown> = { page_size: 100 };
+      if (pageToken) params.page_token = pageToken;
 
-    const res = await this.http.get<any>(this.tablePath("/fields"), { headers, params });
-    if (res.data.code !== 0) {
-      throw new LarkApiError(`Lấy danh sách field lỗi (code ${res.data.code}): ${res.data.msg}`);
-    }
+      const res = await this.http.get<any>(this.tablePath("/fields"), { headers, params });
+      if (res.data.code !== 0) {
+        throw new LarkApiError(`Lấy danh sách field lỗi (code ${res.data.code}): ${res.data.msg}`);
+      }
 
-    const d = res.data.data;
-    allFields.push(...(d.items ?? []));
-    pageToken = d.has_more ? d.page_token : undefined;
-  } while (pageToken);
+      const d = res.data.data;
+      allFields.push(...(d.items ?? []));
+      pageToken = d.has_more ? d.page_token : undefined;
+    } while (pageToken);
 
-  console.dir(allFields, { depth: null });
+    console.dir(allFields, { depth: null });
 
-  return allFields;
-}
+    return allFields;
+  }
 
   async listRecords(options?: {
     filter?: string;
     pageSize?: number;
     pageToken?: string;
+    fieldNames?: string[]; // NEW: chỉ lấy các field cần thiết, giảm payload
   }): Promise<ListRecordsResult> {
     const headers = await this.authHeader();
     const params: Record<string, unknown> = { page_size: options?.pageSize ?? 20 };
     if (options?.filter) params.filter = options.filter;
     if (options?.pageToken) params.page_token = options.pageToken;
+    if (options?.fieldNames?.length) {
+      // Lark Bitable API nhận field_names dạng JSON array string
+      params.field_names = JSON.stringify(options.fieldNames);
+    }
 
     const res = await this.http.get<any>(this.tablePath("/records"), { headers, params });
     if (res.data.code !== 0) {
@@ -178,9 +183,9 @@ async listFields(): Promise<LarkField[]> {
     }
   }
 
-   async createRecord(fields: Record<string, unknown>): Promise<LarkRecord> {
+  async createRecord(fields: Record<string, unknown>): Promise<LarkRecord> {
     const headers = await this.authHeader();
-    
+
     // Chuẩn hóa fields trước khi gửi
     const sanitizedFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
@@ -196,7 +201,7 @@ async listFields(): Promise<LarkField[]> {
 
   async batchCreateRecords(recordsFields: Record<string, unknown>[]): Promise<LarkRecord[]> {
     const headers = await this.authHeader();
-    
+
     // Chuẩn hóa cho chuỗi hàng loạt
     const sanitizedRecords = recordsFields.map((f) => {
       const sanitizedFields: Record<string, unknown> = {};
@@ -221,49 +226,49 @@ async listFields(): Promise<LarkField[]> {
   }
 
 
-async updateRecord(
-  recordId: string,
-  fields: Record<string, unknown>
-): Promise<LarkRecord> {
-  const headers = await this.authHeader();
+  async updateRecord(
+    recordId: string,
+    fields: Record<string, unknown>
+  ): Promise<LarkRecord> {
+    const headers = await this.authHeader();
 
-  // Chuẩn hóa dữ liệu trước khi gửi sang Lark
-  const sanitizedFields: Record<string, unknown> = {};
+    // Chuẩn hóa dữ liệu trước khi gửi sang Lark
+    const sanitizedFields: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(fields)) {
-    sanitizedFields[key] = sanitizeTextField(value);
-  }
-
-  console.log("UPDATE RECORD:", recordId);
-
-  console.dir(
-    sanitizedFields,
-    { depth: null }
-  );
-
-  const res = await this.http.put<any>(
-    this.tablePath(`/records/${recordId}`),
-    {
-      fields: sanitizedFields,
-    },
-    {
-      headers,
+    for (const [key, value] of Object.entries(fields)) {
+      sanitizedFields[key] = sanitizeTextField(value);
     }
-  );
 
-  if (res.data.code !== 0) {
-    console.error(
-      "LARK UPDATE ERROR:",
-      res.data
+    console.log("UPDATE RECORD:", recordId);
+
+    console.dir(
+      sanitizedFields,
+      { depth: null }
     );
 
-    throw new LarkApiError(
-      `Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`
+    const res = await this.http.put<any>(
+      this.tablePath(`/records/${recordId}`),
+      {
+        fields: sanitizedFields,
+      },
+      {
+        headers,
+      }
     );
+
+    if (res.data.code !== 0) {
+      console.error(
+        "LARK UPDATE ERROR:",
+        res.data
+      );
+
+      throw new LarkApiError(
+        `Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`
+      );
+    }
+
+    return res.data.data.record;
   }
-
-  return res.data.data.record;
-}
 
   async deleteRecord(recordId: string): Promise<void> {
     const headers = await this.authHeader();

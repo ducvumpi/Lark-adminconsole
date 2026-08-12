@@ -11,13 +11,34 @@ export default function TiktokImportPanel() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
+    // ─── Nhập tháng cần quét (cột "Gộp tháng") ───────────────────────
+    // Không quét trước toàn bộ Base để lấy danh sách tháng — người dùng
+    // tự nhập trực tiếp, bot sẽ so khớp giá trị này với cột "Gộp tháng"
+    // ngay trong lúc quét link.
+    const [monthInput, setMonthInput] = useState("");
+    // scanAll = true -> quét toàn bộ record, bỏ qua monthInput
+    const [scanAll, setScanAll] = useState(true);
+
+    function parseMonthInput(raw: string): string[] {
+        return raw
+            .split(/[,;\n]/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+    }
+
     async function handleSync() {
         setLoading(true);
         setMessage(null);
         setResults([]);
 
         try {
-            const res = await syncAllTiktokRecordsAction();
+            const parsedMonths = parseMonthInput(monthInput);
+            const monthsToSend =
+                scanAll || parsedMonths.length === 0
+                    ? undefined
+                    : parsedMonths;
+
+            const res = await syncAllTiktokRecordsAction(monthsToSend);
 
             if (!res.success) {
                 setMessage(`❌ ${res.message}`);
@@ -36,8 +57,13 @@ export default function TiktokImportPanel() {
                 (item) => !item.success
             ).length;
 
+            const scopeLabel =
+                monthsToSend && monthsToSend.length > 0
+                    ? `(${monthsToSend.join(", ")})`
+                    : "(tất cả)";
+
             setMessage(
-                `Đã quét ${data.length} link TikTok | ` +
+                `Đã quét ${data.length} link TikTok ${scopeLabel} | ` +
                 `Thành công: ${successCount} | ` +
                 `Lỗi: ${errorCount}`
             );
@@ -65,9 +91,9 @@ export default function TiktokImportPanel() {
                     </h2>
 
                     <p className="mt-1 text-sm text-slate-400">
-                        Hệ thống sẽ đọc toàn bộ bản ghi trong Lark Base,
-                        tìm cột Link Air và tự động lấy chỉ số từ các
-                        link TikTok.
+                        Hệ thống sẽ đọc bản ghi trong Lark Base theo phạm vi tháng
+                        bạn chọn dưới đây, tìm cột Link Air và tự động lấy chỉ số
+                        từ các link TikTok.
                     </p>
                 </div>
 
@@ -80,6 +106,60 @@ export default function TiktokImportPanel() {
                         ? "Đang quét Lark Base..."
                         : "Quét & cập nhật TikTok"}
                 </button>
+            </div>
+
+            {/* Bộ chọn phạm vi tháng */}
+            <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950 p-4">
+                <h3 className="mb-3 text-sm font-semibold text-white">
+                    Phạm vi quét
+                </h3>
+
+                {/* Tuỳ chọn: Tất cả record */}
+                <label className="flex items-center gap-2 text-sm text-slate-200">
+                    <input
+                        type="radio"
+                        name="scan-scope"
+                        checked={scanAll}
+                        onChange={() => setScanAll(true)}
+                        className="h-4 w-4"
+                    />
+                    Tất cả bản ghi
+                </label>
+
+                {/* Tuỳ chọn: Nhập tháng trực tiếp */}
+                <label className="mt-2 flex items-center gap-2 text-sm text-slate-200">
+                    <input
+                        type="radio"
+                        name="scan-scope"
+                        checked={!scanAll}
+                        onChange={() => setScanAll(false)}
+                        className="h-4 w-4"
+                    />
+                    Nhập tháng cần quét (cột &quot;Gộp tháng&quot;)
+                </label>
+
+                {!scanAll ? (
+                    <div className="mt-3 border-t border-slate-800 pt-3">
+                        <input
+                            type="text"
+                            value={monthInput}
+                            onChange={(e) => setMonthInput(e.target.value)}
+                            placeholder="Ví dụ: Tháng 7, Tháng 8"
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+                        />
+                        <p className="mt-1.5 text-xs text-slate-500">
+                            Nhập đúng giá trị đang có trong cột &quot;Gộp tháng&quot;, nhiều tháng
+                            phân tách bởi dấu phẩy. Bot sẽ so khớp giá trị này với từng bản ghi
+                            và chỉ đọc link TikTok của bản ghi khớp tháng.
+                        </p>
+
+                        {parseMonthInput(monthInput).length === 0 ? (
+                            <div className="mt-2 text-xs text-amber-400">
+                                Chưa nhập tháng nào — nếu bấm quét, hệ thống sẽ quét toàn bộ record.
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
             </div>
 
             {/* Message */}
