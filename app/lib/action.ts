@@ -155,17 +155,28 @@ export async function listFieldsAction(): Promise<ActionResult<LarkField[]>> {
 
 // ─── Records ─────────────────────────────────────────────────────────────────
 
-export async function listRecordsAction(options: { filter?: string; pageSize?: number; pageToken?: string; }) {
+export async function listRecordsAction(options: {
+  filter?: string;
+  pageSize?: number;
+  pageToken?: string;
+}) {
   try {
     const client = getLarkClient();
-    // Luôn ép lấy tối đa 100 bản ghi/trang để tải nhanh nhất
+
     const result = await client.listRecords({
       ...options,
-      pageSize: options.pageSize ?? 100
+      pageSize: options.pageSize ?? 100,
     });
-    return { success: true, data: result };
+
+    return {
+      success: true as const,
+      data: result,
+    };
   } catch (err: any) {
-    return { success: false, message: err.message || "Lỗi không xác định" };
+    return {
+      success: false as const,
+      message: err.message || "Lỗi không xác định",
+    };
   }
 }
 
