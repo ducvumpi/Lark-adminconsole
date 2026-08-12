@@ -1180,37 +1180,29 @@ function extractLinkAir(value: unknown): string {
 }
 function isTikTokVideoUrl(url: string): boolean {
   if (!url) return false;
-
   const normalized = url.trim().toLowerCase();
 
   try {
     const parsed = new URL(normalized);
-
     const hostname = parsed.hostname;
 
-    // TikTok video dạng:
-    // https://www.tiktok.com/@username/video/123456
-    if (
-      hostname === "www.tiktok.com" ||
-      hostname === "tiktok.com"
-    ) {
+    if (hostname === "www.tiktok.com" || hostname === "tiktok.com") {
       return (
         parsed.pathname.includes("/video/") ||
-        parsed.pathname.startsWith("/@")
+        parsed.pathname.startsWith("/@") ||
+        parsed.pathname.startsWith("/t/")      // ✅ thêm dạng link rút gọn mới
       );
     }
 
-    // TikTok link rút gọn:
-    // https://vt.tiktok.com/ZSfCQofPR/
     if (
       hostname === "vt.tiktok.com" ||
-      hostname === "vm.tiktok.com"
+      hostname === "vm.tiktok.com" ||
+      hostname.endsWith(".tiktok.com")          // ✅ phòng thêm subdomain khác
     ) {
       return true;
     }
 
     return false;
-
   } catch {
     return false;
   }
@@ -1354,11 +1346,7 @@ ${fields.map((f) => f.field_name).join(", ")}`
     console.log(
       `TỔNG RECORD: ${allRecords.length}`
     );
-    const testRecords = allRecords.slice(0, 10);
 
-    console.log(
-      `TEST MODE: chỉ xử lý ${testRecords.length} record đầu tiên`
-    );
 
     // ============================================================
     // 3. LỌC RECORD CÓ LINK AIR
@@ -1369,7 +1357,7 @@ ${fields.map((f) => f.field_name).join(", ")}`
       linkAir: string;
     }[] = [];
 
-    for (const record of testRecords) {
+    for (const record of allRecords) {
       const rawValue = record.fields[linkAirFieldName];
 
       console.log("================================");
