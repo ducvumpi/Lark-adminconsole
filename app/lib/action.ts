@@ -649,7 +649,8 @@ function pickRealFieldName(fieldMap: Map<string, string>, aliases: string[]): st
 }
 
 export async function fetchTiktokVideoMetricsAction(
-  input: string
+  input: string,
+  userAgent: string = TIKTOK_USER_AGENTS[0]  // thêm tham số này, dùng "=" default chứ không dùng "?"
 ): Promise<ActionResult<TiktokVideoMetrics>> {
   try {
     let videoUrl = normalizeTikTokInput(input);
