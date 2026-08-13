@@ -44,23 +44,19 @@ export const FIELD_TYPE_LABEL: Record<number, string> = {
 class LarkApiError extends Error { }
 /** Hàm dọn dẹp và chuẩn hóa dữ liệu để tránh lỗi TextFieldConvFail */
 function sanitizeTextField(value: unknown): unknown {
-  // Nếu là null hoặc undefined, trả về chuỗi rỗng để xóa trắng ô
   if (value === null || value === undefined) {
     return "";
   }
 
-  // Nếu vô tình truyền vào Object (ví dụ: dữ liệu từ API khác chứa ngày tháng, nested object)
   if (typeof value === "object") {
-    // Kiểm tra nếu đã đúng cấu trúc Rich Text Array của Lark thì giữ nguyên
     if (Array.isArray(value) && value.length > 0 && "type" in value[0]) {
       return value;
     }
-    // Nếu là object khác, ép kiểu về chuỗi JSON để tránh crash
     return JSON.stringify(value);
   }
 
-  // Chuyển các kiểu dữ liệu khác (như boolean, số) thành string nếu mapping nhầm vào ô chữ
-  return String(value);
+  // Giữ nguyên number/boolean — KHÔNG ép String(), vì field đích có thể là Number
+  return value;
 }
 
 export class LarkBaseClient {

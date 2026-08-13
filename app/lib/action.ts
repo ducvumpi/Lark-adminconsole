@@ -647,6 +647,16 @@ function pickRealFieldName(fieldMap: Map<string, string>, aliases: string[]): st
   }
   return null;
 }
+const TIKTOK_USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+];
+
+function pickUserAgent(attempt: number): string {
+  return TIKTOK_USER_AGENTS[attempt % TIKTOK_USER_AGENTS.length];
+}
 
 export async function fetchTiktokVideoMetricsAction(
   input: string,
@@ -685,7 +695,7 @@ export async function fetchTiktokVideoMetricsAction(
 
           headers: {
             "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+              pickUserAgent(0),
 
             "Accept-Language":
               "en-US,en;q=0.9",
@@ -1293,16 +1303,6 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const TIKTOK_USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
-];
-
-function pickUserAgent(attempt: number): string {
-  return TIKTOK_USER_AGENTS[attempt % TIKTOK_USER_AGENTS.length];
-}
 
 function randomJitter(baseMs: number, jitterMs: number): number {
   return baseMs + Math.floor(Math.random() * jitterMs);
@@ -1335,7 +1335,8 @@ async function fetchTiktokVideoMetricsWithRetry(
   return lastResult!;
 }
 export async function syncAllTiktokRecordsAction(
-  selectedMonths?: string[]
+  selectedMonths?: string[],
+  selectedDepartments?: string[]
 ): Promise<ActionResult<SyncTiktokRecordResult[]>
 > {
   try {
@@ -1374,9 +1375,19 @@ ${fields.map((f) => f.field_name).join(", ")}`
       );
     }
 
-    const linkAirFieldName = linkAirField.field_name; // ← phải khai báo TRƯỚC khi dùng bên dưới
+    const linkAirFieldName = linkAirField.field_name;
 
     console.log("Link Air field:", linkAirFieldName);
+
+    // Tìm field "BP sử dụng NS" — không bắt buộc phải tồn tại, nếu không có thì bỏ qua lọc BP
+    const departmentField = fields.find(
+      (field) => normalizeText(field.field_name) === normalizeText("BP sử dụng NS")
+    );
+    const departmentFieldName = departmentField?.field_name ?? null;
+
+    if (selectedDepartments && selectedDepartments.length > 0 && !departmentFieldName) {
+      console.log(`⚠️ Không tìm thấy field "BP sử dụng NS" trong Base — bỏ qua lọc theo BP.`);
+    }
 
     // ============================================================
     // 2. LẤY TOÀN BỘ RECORD (chỉ lấy field cần để lọc, tăng pageSize)
@@ -1391,7 +1402,9 @@ ${fields.map((f) => f.field_name).join(", ")}`
       const result = await client.listRecords({
         pageSize: 500,
         pageToken,
-        fieldNames: [linkAirFieldName, "Gộp tháng"], // dùng biến đã khai báo ở trên
+        fieldNames: departmentFieldName
+          ? [linkAirFieldName, "Gộp tháng", departmentFieldName]
+          : [linkAirFieldName, "Gộp tháng"],
       });
 
       console.log(`Nhận được ${result.items.length} records`);
@@ -1416,7 +1429,7 @@ ${fields.map((f) => f.field_name).join(", ")}`
       }))
     );
 
-    const testRecords =
+    const monthFiltered =
       selectedMonths && selectedMonths.length > 0
         ? allRecords.filter((r) => {
           const monthsOfRecord = extractGopThangValues(r.fields["Gộp tháng"]);
@@ -1425,12 +1438,28 @@ ${fields.map((f) => f.field_name).join(", ")}`
           );
           if (!matched) {
             console.log(
-              `[BỎ QUA] id=${r.record_id}, raw="${r.fields["Gộp tháng"]}", extract=[${monthsOfRecord.join(", ")}]`
+              `[BỎ QUA - Tháng] id=${r.record_id}, raw="${r.fields["Gộp tháng"]}", extract=[${monthsOfRecord.join(", ")}]`
             );
           }
           return matched;
         })
         : allRecords;
+
+    const testRecords =
+      selectedDepartments && selectedDepartments.length > 0 && departmentFieldName
+        ? monthFiltered.filter((r) => {
+          const deptsOfRecord = extractGopThangValues(r.fields[departmentFieldName]);
+          const matched = deptsOfRecord.some((d) =>
+            selectedDepartments.some((sel) => normalizeText(d) === normalizeText(sel))
+          );
+          if (!matched) {
+            console.log(
+              `[BỎ QUA - BP] id=${r.record_id}, raw="${r.fields[departmentFieldName]}", extract=[${deptsOfRecord.join(", ")}]`
+            );
+          }
+          return matched;
+        })
+        : monthFiltered;
 
     console.log(`Sẽ xử lý ${testRecords.length}/${allRecords.length} record`);
 

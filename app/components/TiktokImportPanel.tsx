@@ -7,7 +7,8 @@ import {
 } from "@/app/lib/action";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1); // 1..12
-
+const DEPARTMENTS = ["MPD", "Production", "Product MKT"] as const;
+type Department = (typeof DEPARTMENTS)[number];
 function getRecentYears(count = 2): number[] {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: count }, (_, i) => currentYear - i);
@@ -23,7 +24,22 @@ export default function TiktokImportPanel() {
     const [scanAll, setScanAll] = useState(true);
     const [selectedYear, setSelectedYear] = useState<number>(years[0]);
     const [selectedMonths, setSelectedMonths] = useState<Set<number>>(new Set());
+    const [selectedDepartments, setSelectedDepartments] = useState<Set<Department>>(new Set());
 
+    function toggleDepartment(dept: Department) {
+        setSelectedDepartments((prev) => {
+            const next = new Set(prev);
+            if (next.has(dept)) next.delete(dept);
+            else next.add(dept);
+            return next;
+        });
+    }
+
+    function toggleAllDepartments() {
+        setSelectedDepartments((prev) =>
+            prev.size === DEPARTMENTS.length ? new Set() : new Set(DEPARTMENTS)
+        );
+    }
     function toggleMonth(month: number) {
         setSelectedMonths((prev) => {
             const next = new Set(prev);
@@ -46,7 +62,10 @@ export default function TiktokImportPanel() {
                 .map((m) => `Tháng ${m}/${selectedYear}`),
         [selectedMonths, selectedYear]
     );
-
+    const departmentLabels = useMemo(
+        () => Array.from(selectedDepartments),
+        [selectedDepartments]
+    );
     async function handleSync() {
         setLoading(true);
         setMessage(null);
@@ -55,8 +74,10 @@ export default function TiktokImportPanel() {
         try {
             const monthsToSend =
                 scanAll || monthLabels.length === 0 ? undefined : monthLabels;
+            const departmentsToSend =
+                scanAll || departmentLabels.length === 0 ? undefined : departmentLabels;
 
-            const res = await syncAllTiktokRecordsAction(monthsToSend);
+            const res = await syncAllTiktokRecordsAction(monthsToSend, departmentsToSend);
 
             if (!res.success) {
                 setMessage(`❌ ${res.message}`);
@@ -69,10 +90,10 @@ export default function TiktokImportPanel() {
             const successCount = data.filter((item) => item.success).length;
             const errorCount = data.filter((item) => !item.success).length;
 
-            const scopeLabel =
-                monthsToSend && monthsToSend.length > 0
-                    ? `(${monthsToSend.join(", ")})`
-                    : "(tất cả)";
+            const scopeParts: string[] = [];
+            if (monthsToSend?.length) scopeParts.push(monthsToSend.join(", "));
+            if (departmentsToSend?.length) scopeParts.push(departmentsToSend.join(", "));
+            const scopeLabel = scopeParts.length ? `(${scopeParts.join(" | ")})` : "(tất cả)";
 
             setMessage(
                 `Đã quét ${data.length} link TikTok ${scopeLabel} | ` +
@@ -100,7 +121,39 @@ export default function TiktokImportPanel() {
                         từ các link TikTok.
                     </p>
                 </div>
-
+                {/* Chọn BP sử dụng NS */}
+                <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-xs font-medium text-slate-400">
+                            BP sử dụng NS
+                        </span>
+                        <button
+                            type="button"
+                            onClick={toggleAllDepartments}
+                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                            {selectedDepartments.size === DEPARTMENTS.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {DEPARTMENTS.map((dept) => {
+                            const checked = selectedDepartments.has(dept);
+                            return (
+                                <button
+                                    key={dept}
+                                    type="button"
+                                    onClick={() => toggleDepartment(dept)}
+                                    className={`rounded-lg border px-3 py-1.5 text-sm transition ${checked
+                                        ? "border-blue-500 bg-blue-600 text-white"
+                                        : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                        }`}
+                                >
+                                    {dept}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
                 <button
                     className="btn btn-primary"
                     onClick={handleSync}
@@ -154,8 +207,8 @@ export default function TiktokImportPanel() {
                                         type="button"
                                         onClick={() => setSelectedYear(y)}
                                         className={`rounded-lg border px-3 py-1.5 text-sm transition ${selectedYear === y
-                                                ? "border-blue-500 bg-blue-600 text-white"
-                                                : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                            ? "border-blue-500 bg-blue-600 text-white"
+                                            : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
                                             }`}
                                     >
                                         {y}
@@ -187,8 +240,8 @@ export default function TiktokImportPanel() {
                                             type="button"
                                             onClick={() => toggleMonth(m)}
                                             className={`rounded-lg border px-2 py-1.5 text-sm transition ${checked
-                                                    ? "border-blue-500 bg-blue-600 text-white"
-                                                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                                ? "border-blue-500 bg-blue-600 text-white"
+                                                : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
                                                 }`}
                                         >
                                             T{m}
