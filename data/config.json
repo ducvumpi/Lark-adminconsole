@@ -1,6 +1,6 @@
 {
-  "activeBaseId": "base-1786333669798",
-  "activeTableId": "table-1786333703674-miq4",
+  "activeBaseId": "default",
+  "activeTableId": "table-1787198822796-h67a",
   "bases": [
     {
       "id": "default",
@@ -12,13 +12,23 @@
       "tables": [
         {
           "id": "table-1786332478231-lpw3",
-          "name": "Test A03. Ngân sách TGĐ duyệt",
-          "tableId": "tblALIORiaTl0PrL"
+          "name": "A03. Ngân sách TGĐ duyệt",
+          "tableId": "tblG7IHh0GAkMmsD"
         },
         {
           "id": "table-1786332662504-7hmk",
           "name": "Tester A02. Ngân sách dự chi",
           "tableId": "tblD0d0Ug6In1PE9"
+        },
+        {
+          "id": "table-1787198822796-h67a",
+          "name": "A03. Ngân sách TGĐ duyệt",
+          "tableId": "tbllfO09BSzOiIjF"
+        },
+        {
+          "id": "table-1789037899691-5qp3",
+          "name": "A01.Tổng hợp  Ngân sách TGĐ duyệt",
+          "tableId": "tblMZGmHZmhuP4vc"
         }
       ]
     },
@@ -48,7 +58,7 @@
         {
           "id": "table-1786446947253-mhg2",
           "name": "Test B04. Quản lý Booking 1",
-          "tableId": "tblQ39cOa4CvUWe6"
+          "tableId": "tblzsXpbjrJ6s57c"
         },
         {
           "id": "table-1786461346710-m6iw",

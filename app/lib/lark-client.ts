@@ -43,22 +43,65 @@ export const FIELD_TYPE_LABEL: Record<number, string> = {
 
 class LarkApiError extends Error { }
 /** Hàm dọn dẹp và chuẩn hóa dữ liệu để tránh lỗi TextFieldConvFail */
-function sanitizeTextField(value: unknown): unknown {
+// // type: kiểu field thật lấy từ listFields() — 2 = Số, còn lại mặc định coi là Văn bản
+// function sanitizeFieldValue(value: unknown, fieldType?: number): unknown {
+//   if (value === null || value === undefined) {
+//     return "";
+//   }
+
+//   if (typeof value === "object") {
+//     if (Array.isArray(value) && value.length > 0 && "type" in value[0]) {
+//       return value;
+//     }
+//     return JSON.stringify(value);
+//   }
+
+//   // Field Số (type 2): ép về number thật, không để lọt string
+//   if (fieldType === 2) {
+//     if (typeof value === "number") return value;
+//     const num = Number(value);
+//     return Number.isFinite(num) ? num : value;
+//   }
+
+//   // Field khác (mặc định coi là Text): ép về string
+//   return String(value);
+// }
+/** Chuẩn hóa null/undefined và object — áp dụng cho MỌI trường hợp, không phụ thuộc field type. */
+function normalizeRawValue(value: unknown): unknown {
   if (value === null || value === undefined) {
     return "";
   }
-
   if (typeof value === "object") {
     if (Array.isArray(value) && value.length > 0 && "type" in value[0]) {
-      return value;
+      return value; // Rich Text Array của Lark — giữ nguyên
     }
     return JSON.stringify(value);
   }
-
-  // Giữ nguyên number/boolean — KHÔNG ép String(), vì field đích có thể là Number
-  return value;
+  return value; // number/string/boolean — GIỮ NGUYÊN kiểu gốc, không đoán
 }
 
+
+/** Ép kiểu theo field type THẬT — chỉ áp dụng khi caller biết chắc field type (có fieldTypeMap).
+ * Không dùng làm default, để tránh phá vỡ các luồng vốn đã tự parse đúng kiểu (import Excel, v.v.) */
+function coerceByFieldType(value: unknown, fieldType: number): unknown {
+  if (typeof value === "object") return value; // rich text array/json string đã xử lý ở normalizeRawValue
+
+  if (fieldType === 2) {
+    // Field Số: ép về number thật
+    if (typeof value === "number") return value;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : value;
+  }
+
+  // Field khác (Văn bản...): ép về string
+  return typeof value === "string" ? value : String(value);
+}
+
+function sanitizeFieldValue(value: unknown, fieldType?: number): unknown {
+  const normalized = normalizeRawValue(value);
+  if (fieldType === undefined) return normalized; // KHÔNG đoán kiểu nếu không biết field type thật
+  return coerceByFieldType(normalized, fieldType);
+}
 export class LarkBaseClient {
   private http: AxiosInstance;
   private accessToken = "";
@@ -136,14 +179,19 @@ export class LarkBaseClient {
     filter?: string;
     pageSize?: number;
     pageToken?: string;
-    fieldNames?: string[]; // NEW: chỉ lấy các field cần thiết, giảm payload
+    fieldNames?: string[];
   }): Promise<ListRecordsResult> {
     const headers = await this.authHeader();
-    const params: Record<string, unknown> = { page_size: options?.pageSize ?? 20 };
+    const params: Record<string, unknown> = {
+      page_size: options?.pageSize ?? 20,
+      // Bắt buộc để Lark TÍNH và trả về giá trị các field loại Lookup/Formula/Rollup/
+      // CreatedTime/ModifiedTime — thiếu param này, các field đó luôn về rỗng dù có
+      // liệt kê tên trong field_names, và Lark KHÔNG báo lỗi gì cả.
+      automatic_fields: true,
+    };
     if (options?.filter) params.filter = options.filter;
     if (options?.pageToken) params.page_token = options.pageToken;
     if (options?.fieldNames?.length) {
-      // Lark Bitable API nhận field_names dạng JSON array string
       params.field_names = JSON.stringify(options.fieldNames);
     }
 
@@ -159,33 +207,35 @@ export class LarkBaseClient {
       total: d.total ?? 0,
     };
   }
-
   /** Lấy CHÍNH XÁC 1 record theo record_id — dùng để xác minh trực tiếp record có tồn tại trong
    * đúng Base/Table đang cấu hình hay không (hữu ích khi debug "audit log có, nhưng Base không thấy"). */
-  async getRecord(recordId: string): Promise<LarkRecord | null> {
-    const headers = await this.authHeader();
-    try {
-      const res = await this.http.get<any>(this.tablePath(`/records/${recordId}`), { headers });
-      if (res.data.code !== 0) {
-        throw new LarkApiError(`Lấy record lỗi (code ${res.data.code}): ${res.data.msg}`);
-      }
-      return res.data.data.record;
-    } catch (err: any) {
-      // Lark trả 404 nếu record không tồn tại trong Base/Table đang trỏ tới
-      if (err.response?.status === 404 || err.response?.data?.code === 1254043) {
-        return null;
-      }
-      throw err;
+ async getRecord(recordId: string): Promise<LarkRecord | null> {
+  const headers = await this.authHeader();
+  try {
+    const res = await this.http.get<any>(this.tablePath(`/records/${recordId}`), {
+      headers,
+      params: { automatic_fields: true }, // như trên — cần cho Lookup/Formula
+    });
+    if (res.data.code !== 0) {
+      throw new LarkApiError(`Lấy record lỗi (code ${res.data.code}): ${res.data.msg}`);
     }
+    return res.data.data.record;
+  } catch (err: any) {
+    if (err.response?.status === 404 || err.response?.data?.code === 1254043) {
+      return null;
+    }
+    throw err;
   }
-
-  async createRecord(fields: Record<string, unknown>): Promise<LarkRecord> {
+}
+  async createRecord(
+    fields: Record<string, unknown>,
+    fieldTypeMap?: Map<string, number>
+  ): Promise<LarkRecord> {
     const headers = await this.authHeader();
 
-    // Chuẩn hóa fields trước khi gửi
     const sanitizedFields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
-      sanitizedFields[key] = sanitizeTextField(value);
+      sanitizedFields[key] = sanitizeFieldValue(value, fieldTypeMap?.get(key));
     }
 
     const res = await this.http.post<any>(this.tablePath("/records"), { fields: sanitizedFields }, { headers });
@@ -195,26 +245,21 @@ export class LarkBaseClient {
     return res.data.data.record;
   }
 
-  async batchCreateRecords(recordsFields: Record<string, unknown>[]): Promise<LarkRecord[]> {
+  async batchCreateRecords(
+    recordsFields: Record<string, unknown>[],
+    fieldTypeMap?: Map<string, number>
+  ): Promise<LarkRecord[]> {
     const headers = await this.authHeader();
 
-    // Chuẩn hóa cho chuỗi hàng loạt
     const sanitizedRecords = recordsFields.map((f) => {
       const sanitizedFields: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(f)) {
-        sanitizedFields[key] = sanitizeTextField(value);
+        sanitizedFields[key] = sanitizeFieldValue(value, fieldTypeMap?.get(key));
       }
       return { fields: sanitizedFields };
     });
 
-    const res = await this.http.post(
-      this.tablePath("/records/batch_create"),
-      { records: sanitizedRecords },
-      { headers }
-    );
-
-    console.dir(res.data, { depth: null });
-
+    const res = await this.http.post(this.tablePath("/records/batch_create"), { records: sanitizedRecords }, { headers });
     if (res.data.code !== 0) {
       throw new LarkApiError(`Tạo hàng loạt record lỗi (code ${res.data.code}): ${res.data.msg}`);
     }
@@ -224,45 +269,25 @@ export class LarkBaseClient {
 
   async updateRecord(
     recordId: string,
-    fields: Record<string, unknown>
+    fields: Record<string, unknown>,
+    fieldTypeMap?: Map<string, number>
   ): Promise<LarkRecord> {
     const headers = await this.authHeader();
 
-    // Chuẩn hóa dữ liệu trước khi gửi sang Lark
     const sanitizedFields: Record<string, unknown> = {};
-
     for (const [key, value] of Object.entries(fields)) {
-      sanitizedFields[key] = sanitizeTextField(value);
+      sanitizedFields[key] = sanitizeFieldValue(value, fieldTypeMap?.get(key));
     }
-
-    console.log("UPDATE RECORD:", recordId);
-
-    console.dir(
-      sanitizedFields,
-      { depth: null }
-    );
 
     const res = await this.http.put<any>(
       this.tablePath(`/records/${recordId}`),
-      {
-        fields: sanitizedFields,
-      },
-      {
-        headers,
-      }
+      { fields: sanitizedFields },
+      { headers }
     );
 
     if (res.data.code !== 0) {
-      console.error(
-        "LARK UPDATE ERROR:",
-        res.data
-      );
-
-      throw new LarkApiError(
-        `Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`
-      );
+      throw new LarkApiError(`Cập nhật record lỗi (code ${res.data.code}): ${res.data.msg}`);
     }
-
     return res.data.data.record;
   }
 
@@ -272,6 +297,75 @@ export class LarkBaseClient {
     if (res.data.code !== 0) {
       throw new LarkApiError(`Xóa record lỗi (code ${res.data.code}): ${res.data.msg}`);
     }
+  }
+  /**
+ * Đọc TẤT CẢ record khớp điều kiện filter (Lark filter syntax), tự động phân trang.
+ * filter ví dụ: `CurrentValue.[Số tiền TGĐ duyệt]<0`
+ */
+  async findRecordsByFilter(
+    filter: string,
+    fieldNames?: string[]
+  ): Promise<LarkRecord[]> {
+    const all: LarkRecord[] = [];
+    let pageToken: string | undefined;
+
+    do {
+      const result = await this.listRecords({
+        filter,
+        pageSize: 100,
+        pageToken,
+        fieldNames,
+      });
+      all.push(...result.items);
+      pageToken = result.hasMore ? result.pageToken : undefined;
+    } while (pageToken);
+
+    return all;
+  }
+
+  /**
+   * Xóa hàng loạt record theo record_id, tự chia batch tối đa 500/lần (giới hạn của Lark).
+   * Trả về danh sách id xóa thành công / thất bại để dễ log lại.
+   */
+  async batchDeleteRecords(
+    recordIds: string[]
+  ): Promise<{ deleted: string[]; failed: string[] }> {
+    const headers = await this.authHeader();
+    const deleted: string[] = [];
+    const failed: string[] = [];
+
+    for (let i = 0; i < recordIds.length; i += 500) {
+      const chunk = recordIds.slice(i, i + 500);
+      try {
+        const res = await this.http.post<any>(
+          this.tablePath("/records/batch_delete"),
+          { records: chunk },
+          { headers }
+        );
+        if (res.data.code !== 0) {
+          throw new LarkApiError(
+            `Xóa hàng loạt record lỗi (code ${res.data.code}): ${res.data.msg}`
+          );
+        }
+        deleted.push(...chunk);
+      } catch (err) {
+        failed.push(...chunk);
+      }
+    }
+
+    return { deleted, failed };
+  }
+
+  /**
+   * Hàm tiện ích cấp cao: tìm các record có field "Số tiền TGĐ duyệt" âm.
+   * fieldName truyền vào phòng trường hợp tên cột khác đi ở base khác.
+   */
+  async findNegativeApprovedAmountRecords(
+    fieldName = "Số tiền TGĐ duyệt"
+  ): Promise<LarkRecord[]> {
+    return this.findRecordsByFilter(`CurrentValue.[${fieldName}]<0`, [
+      fieldName,
+    ]);
   }
 }
 

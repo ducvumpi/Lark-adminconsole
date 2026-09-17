@@ -24,8 +24,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <head> <script src="https://cdn.botpress.cloud/webchat/v3.7/inject.js"></script>
-        <script src="https://files.bpcontent.cloud/2025/12/11/08/20251211081314-GCM8M5CS.js" defer></script></head>
+      <head>
+        {/* <script src="https://cdn.botpress.cloud/webchat/v3.7/inject.js"></script>
+        <script src="https://files.bpcontent.cloud/2025/12/11/08/20251211081314-GCM8M5CS.js" defer></script> */}
+      </head>
 
       <body className="app-body">{children}</body>
 

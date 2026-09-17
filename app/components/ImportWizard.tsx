@@ -22,6 +22,117 @@ interface ImportResult {
   debug: SheetDebugInfo[];
 }
 
+interface ImportedBudgetTotal {
+  code: string;
+  amount: number;
+}
+
+interface ImportedBrandTotal {
+  brand: string;
+  level1: ImportedBudgetTotal[];
+  level2: ImportedBudgetTotal[];
+  level3: ImportedBudgetTotal[];
+}
+
+function normalizeBudgetCode(code: string): string {
+  return code.trim().replace(/[_.\/\s-]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function getBudgetCodePath(code: string): string[] {
+  const parts = code.split("-").filter(Boolean);
+  if (parts.length <= 1) return [code];
+  if (parts.length > 2) {
+    return parts.map((_, index) => parts.slice(0, index + 1).join("-"));
+  }
+
+  const [level1, suffix] = parts;
+  const path = [level1];
+  for (let length = 2; length <= suffix.length; length += 2) {
+    path.push(`${level1}-${suffix.slice(0, length)}`);
+  }
+  return path;
+}
+
+function getImportedBudgetTotals(results: TgdImportRowResult[]): {
+  brands: ImportedBrandTotal[];
+} {
+  const byBrand = new Map<string, Map<string, { code: string; amount: number }>>();
+
+  for (const row of results) {
+    if (row.action === "skipped") continue;
+    const code = row.maNganSach.trim();
+    if (!code) continue;
+
+    const brand = row.brand.trim() || "Không xác định Brand";
+    const current = byBrand.get(brand) ?? new Map();
+    const normalizedCode = normalizeBudgetCode(code);
+    const existing = current.get(normalizedCode);
+    current.set(normalizedCode, {
+      code: existing?.code ?? code,
+      amount: (existing?.amount ?? 0) + row.soTien,
+    });
+    byBrand.set(brand, current);
+  }
+
+  const getDepth = (code: string) => getBudgetCodePath(code).length;
+
+  return {
+    brands: Array.from(byBrand.entries())
+      .map(([brand, codeMap]) => {
+        const calculated = new Map(codeMap);
+        const allCodes = new Set(codeMap.keys());
+        for (const code of codeMap.keys()) {
+          for (const parentCode of getBudgetCodePath(code)) allCodes.add(parentCode);
+        }
+
+        for (const code of allCodes) {
+          if (!calculated.has(code)) calculated.set(code, { code, amount: 0 });
+        }
+
+        const maxDepth = Math.max(...Array.from(allCodes).map(getDepth));
+        for (let depth = maxDepth - 1; depth >= 1; depth--) {
+          for (const code of allCodes) {
+            if (getDepth(code) !== depth) continue;
+            const children = Array.from(allCodes).filter(
+              (candidate) => {
+                const candidatePath = getBudgetCodePath(candidate);
+                return candidatePath.length === depth + 1 && candidatePath[depth - 1] === code;
+              }
+            );
+            if (children.length > 0) {
+              calculated.get(code)!.amount = children.reduce(
+                (sum, child) => sum + calculated.get(child)!.amount,
+                0
+              );
+            }
+          }
+        }
+
+        const level1 = Array.from(calculated.values())
+          .filter((item) => getDepth(item.code) === 1)
+          .map((item) => ({ code: item.code, amount: item.amount }))
+          .sort((a, b) => a.code.localeCompare(b.code));
+        const level2 = Array.from(calculated.values())
+          .filter((item) => getDepth(item.code) === 2)
+          .map((item) => ({
+            code: item.code,
+            amount: item.amount,
+          }))
+          .sort((a, b) => a.code.localeCompare(b.code));
+        const level3 = Array.from(calculated.values())
+          .filter((item) => getDepth(item.code) === 3)
+          .map((item) => ({
+            code: item.code,
+            amount: item.amount,
+          }))
+          .sort((a, b) => a.code.localeCompare(b.code));
+
+        return { brand, level1, level2, level3 };
+      })
+      .sort((a, b) => a.brand.localeCompare(b.brand)),
+  };
+}
+
 const LOAI_NGAN_SACH_OPTIONS = [
   "Ngân sách Ads",
   "Ngân sách hãng tài trợ",
@@ -37,7 +148,7 @@ const LOAI_DE_XUAT_OPTIONS = [
   "Đề xuất ngân sách phát sinh",
   "Đề xuất ngân sách quý",
 ];
-
+const LAN_DE_XUAT_OPTIONS = Array.from({ length: 10 }, (_, i) => `Lần ${i + 1}`);
 type Step = "upload" | "select" | "done";
 
 type ProgressPopupState = {
@@ -55,6 +166,7 @@ type FileSelectionState = {
   selectedMonths: Set<string>;
   loaiNganSach: string;
   loaiDeXuat: string;
+  lanDeXuat: string; // 👈 thêm dòng này
   stopRequested: boolean;
   status: "pending" | "running" | "done" | "stopped";
   recordEstimate: number;
@@ -164,6 +276,7 @@ export default function ImportWizard({
           selectedMonths: new Set(res.data!.months),
           loaiNganSach: LOAI_NGAN_SACH_OPTIONS[0],
           loaiDeXuat: LOAI_DE_XUAT_OPTIONS[0],
+          lanDeXuat: LAN_DE_XUAT_OPTIONS[0], // 👈 thêm dòng này
           stopRequested: false,
           status: "pending",
           recordEstimate: res.data!.recordEstimate,
@@ -212,7 +325,11 @@ export default function ImportWizard({
     );
   }
 
-  function updateFileType(fileName: string, type: "loaiNganSach" | "loaiDeXuat", value: string) {
+  function updateFileType(
+    fileName: string,
+    type: "loaiNganSach" | "loaiDeXuat" | "lanDeXuat", // 👈 thêm "lanDeXuat"
+    value: string
+  ) {
     setFileSelections((prev) =>
       prev.map((item) => {
         if (item.file.name !== fileName) return item;
@@ -303,6 +420,7 @@ export default function ImportWizard({
         fd.append("file", item.file);
         fd.append("loaiNganSach", item.loaiNganSach);
         fd.append("loaiDeXuat", item.loaiDeXuat);
+        fd.append("lanDeXuat", item.lanDeXuat); // 👈 thêm dòng này
         fd.append("selectedSheets", JSON.stringify(Array.from(item.selectedSheets)));
         fd.append("selectedMonths", JSON.stringify(Array.from(item.selectedMonths)));
 
@@ -489,6 +607,7 @@ export default function ImportWizard({
     : [];
 
   const importedNothing = result && result.created === 0 && result.updated === 0 && result.skipped === 0;
+  const importedBudgetTotals = result ? getImportedBudgetTotals(result.results) : { brands: [] };
 
   return (
     <div className="space-y-6 p-6">
@@ -557,7 +676,7 @@ export default function ImportWizard({
                   </div>
                 </div>
 
-                <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-400">Loại ngân sách</label>
                     <select
@@ -566,9 +685,7 @@ export default function ImportWizard({
                       className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
                     >
                       {LOAI_NGAN_SACH_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
+                        <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   </div>
@@ -580,9 +697,19 @@ export default function ImportWizard({
                       className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
                     >
                       {LOAI_DE_XUAT_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400">Lần đề xuất</label>
+                    <select
+                      value={item.lanDeXuat}
+                      onChange={(e) => updateFileType(item.file.name, "lanDeXuat", e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
+                    >
+                      {LAN_DE_XUAT_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   </div>
@@ -699,6 +826,46 @@ export default function ImportWizard({
 
           {brandQuarterSummary.length > 0 && (
             <div className="mt-3 text-xs text-slate-400">Đã nhận diện: {brandQuarterSummary.join(" | ")}</div>
+          )}
+
+          {importedBudgetTotals.brands.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {importedBudgetTotals.brands.map((brandTotal) => {
+                const level1Total = brandTotal.level1.reduce((sum, item) => sum + item.amount, 0);
+                const level2Total = brandTotal.level2.reduce((sum, item) => sum + item.amount, 0);
+                const level3Total = brandTotal.level3.reduce((sum, item) => sum + item.amount, 0);
+                const level1MatchesLevel2 = level1Total === level2Total;
+                const level2MatchesLevel3 = level3Total === 0 || level2Total === level3Total;
+                return (
+                  <div key={brandTotal.brand} className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-200">
+                      <span>Brand: {brandTotal.brand}</span>
+                      <span>Tổng cấp 1: {level1Total.toLocaleString("vi-VN")}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                      Đối soát ngân sách: Cấp 1 = Cấp 2 {level1MatchesLevel2 ? "✓" : "⚠"}
+                      {level3Total > 0 && ` · Cấp 2 = Cấp 3 ${level2MatchesLevel3 ? "✓" : "⚠"}`}
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 gap-3 text-xs lg:grid-cols-3">
+                      {[
+                        { title: "Mã cấp 1 / mã cha", items: brandTotal.level1, total: level1Total },
+                        { title: "Mã cấp 2", items: brandTotal.level2, total: level2Total },
+                        { title: "Mã cấp 3", items: brandTotal.level3, total: level3Total },
+                      ].map((group) => (
+                        <div key={group.title}>
+                          <div className="text-slate-400">{group.title}: <span className="text-slate-200">{group.total.toLocaleString("vi-VN")}</span></div>
+                          {group.items.map((item) => (
+                            <div key={item.code} className="mt-1 flex justify-between gap-3 text-slate-400">
+                              <span>{item.code}</span><span className="text-slate-200">{item.amount.toLocaleString("vi-VN")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           <div className="mt-4 flex flex-col gap-3">

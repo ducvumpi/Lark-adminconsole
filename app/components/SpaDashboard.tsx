@@ -8,7 +8,12 @@ import RecordsManager from "@/app/components/RecordsManager";
 import ImportWizard from "@/app/components/ImportWizard";
 import TiktokImportPanel from "@/app/components/TiktokImportPanel";
 import SettingsForm from "@/app/components/SettingsForm";
+import DeleteNegativeRecordsPanel from "@/app/components/DeleteNegativeRecordsPanel";
+import DuplicateLevel1CodesPanel from "@/app/components/DuplicateLevel1CodesPanel";
 import { useRouter } from "next/navigation";
+import SuspiciousSourceRecordsPanel from "./SuspiciousSourceRecordsPanel";
+import BudgetLevelViolationPanel from "@/app/components/BudgetLevelViolationPanel";
+import BudgetHierarchyAuditPanel from "@/app/components/BudgetHierarchyAuditPanel";
 const FIELD_TYPE_LABEL: Record<string, string> = {
     1: "Single Select",
     2: "Multi Select",
@@ -31,8 +36,7 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
     19: "Auto Number",
 };
 
-type TabKey = "overview" | "fields" | "records" | "import" | "tiktok" | "settings";
-
+type TabKey = "overview" | "fields" | "records" | "import" | "tiktok" | "cleanup" | "audit" | "settings";
 type RecordsListResult = {
     items: LarkRecord[];
     hasMore: boolean;
@@ -99,6 +103,8 @@ export default function SpaDashboard({
         { key: "records", label: "Records", icon: "🗂" },
         { key: "import", label: "Import Excel", icon: "⬆️" },
         { key: "tiktok", label: "TikTok", icon: "🎵" },
+        { key: "cleanup", label: "Dọn dữ liệu", icon: "🧹" },
+        { key: "audit", label: "Kiểm tra ngân sách", icon: "🔎" },
         { key: "settings", label: "Cài đặt", icon: "⚙️" },
     ];
 
@@ -284,7 +290,32 @@ export default function SpaDashboard({
                         <TiktokImportPanel />
                     </section>
                 )}
+                {activeTab === "cleanup" && (
+                    <section className="panel">
+                        <div className="panel-header">
+                            <div>
+                                <h3 className="panel-title">Dọn dữ liệu</h3>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <DeleteNegativeRecordsPanel />
+                            <DuplicateLevel1CodesPanel />
+                            <SuspiciousSourceRecordsPanel />
+                            <BudgetLevelViolationPanel />
 
+                        </div>
+                    </section>
+                )}
+                {activeTab === "audit" && (
+                    <section className="panel">
+                        <div className="panel-header">
+                            <div>
+                                <h3 className="panel-title">Kiểm tra ngân sách</h3>
+                            </div>
+                        </div>
+                        <BudgetHierarchyAuditPanel />
+                    </section>
+                )}
                 {activeTab === "settings" && (
                     <section className="panel">
                         <div className="panel-header">
