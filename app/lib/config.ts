@@ -32,34 +32,41 @@ export interface LarkConfigStorage {
 
 const CONFIG_PATH = path.join(process.cwd(), "data", "config.json");
 
-function readOverrides(): any {
+type ConfigRecord = Record<string, unknown>;
+
+function isConfigRecord(value: unknown): value is ConfigRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readOverrides(): ConfigRecord {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
-    return JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
+    return isConfigRecord(parsed) ? parsed : {};
   } catch {
     return {};
   }
 }
 
-function normalizeTableProfile(table: Partial<LarkTableProfile> | undefined, fallbackName = "Bảng"): LarkTableProfile {
+function normalizeTableProfile(table: ConfigRecord | undefined, fallbackName = "Bảng"): LarkTableProfile {
   const current = table ?? {};
   return {
-    id: current.id || `table-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    name: current.name || fallbackName,
-    tableId: current.tableId || "",
+    id: typeof current.id === "string" && current.id ? current.id : `table-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: typeof current.name === "string" && current.name ? current.name : fallbackName,
+    tableId: typeof current.tableId === "string" ? current.tableId : "",
   };
 }
 
 /** Chuẩn hóa 1 base profile — TƯƠNG THÍCH NGƯỢC với format cũ (base có `tableId` trực
  * tiếp, không có mảng `tables`). Nếu gặp format cũ, tự động gói `tableId` cũ thành
  * 1 table đầu tiên trong mảng `tables`. */
-function normalizeBaseProfile(base: any, fallbackName = "Base"): LarkBaseProfile {
-  const current = base ?? {};
+function normalizeBaseProfile(base: unknown, fallbackName = "Base"): LarkBaseProfile {
+  const current = isConfigRecord(base) ? base : {};
 
   let tables: LarkTableProfile[];
   if (Array.isArray(current.tables) && current.tables.length > 0) {
-    tables = current.tables.map((t: any, i: number) => normalizeTableProfile(t, `Bảng ${i + 1}`));
-  } else if (current.tableId) {
+    tables = current.tables.filter(isConfigRecord).map((table, index) => normalizeTableProfile(table, `Bảng ${index + 1}`));
+  } else if (typeof current.tableId === "string" && current.tableId) {
     // Format cũ: base có tableId trực tiếp -> gói thành 1 table
     tables = [normalizeTableProfile({ id: "table-1", name: "Bảng 1", tableId: current.tableId }, "Bảng 1")];
   } else {
@@ -67,12 +74,12 @@ function normalizeBaseProfile(base: any, fallbackName = "Base"): LarkBaseProfile
   }
 
   return {
-    id: current.id || `base-${Date.now()}`,
-    name: current.name || fallbackName,
-    appId: current.appId || "",
-    appSecret: current.appSecret || "",
-    baseAppToken: current.baseAppToken || "",
-    apiBaseUrl: current.apiBaseUrl || "https://open.larksuite.com/open-apis",
+    id: typeof current.id === "string" && current.id ? current.id : `base-${Date.now()}`,
+    name: typeof current.name === "string" && current.name ? current.name : fallbackName,
+    appId: typeof current.appId === "string" ? current.appId : "",
+    appSecret: typeof current.appSecret === "string" ? current.appSecret : "",
+    baseAppToken: typeof current.baseAppToken === "string" ? current.baseAppToken : "",
+    apiBaseUrl: typeof current.apiBaseUrl === "string" && current.apiBaseUrl ? current.apiBaseUrl : "https://open.larksuite.com/open-apis",
     tables,
   };
 }
@@ -97,23 +104,23 @@ export function getConfigStorage(): LarkConfigStorage {
     {
       id: "default",
       name: "Base mặc định",
-      appId: raw.appId || process.env.LARK_APP_ID || "",
-      appSecret: raw.appSecret || process.env.LARK_APP_SECRET || "",
-      baseAppToken: raw.baseAppToken || process.env.LARK_BASE_APP_TOKEN || "",
-      apiBaseUrl: raw.apiBaseUrl || process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
-      tableId: raw.tableId || process.env.LARK_TABLE_ID || "",
+      appId: typeof raw.appId === "string" ? raw.appId : process.env.LARK_APP_ID || "",
+      appSecret: typeof raw.appSecret === "string" ? raw.appSecret : process.env.LARK_APP_SECRET || "",
+      baseAppToken: typeof raw.baseAppToken === "string" ? raw.baseAppToken : process.env.LARK_BASE_APP_TOKEN || "",
+      apiBaseUrl: typeof raw.apiBaseUrl === "string" ? raw.apiBaseUrl : process.env.LARK_API_BASE_URL || "https://open.larksuite.com/open-apis",
+      tableId: typeof raw.tableId === "string" ? raw.tableId : process.env.LARK_TABLE_ID || "",
     },
     "Base mặc định"
   );
 
   const existingBases: LarkBaseProfile[] = Array.isArray(raw.bases)
-    ? raw.bases.map((base: any, index: number) => normalizeBaseProfile(base, `Base ${index + 1}`))
+    ? raw.bases.filter(isConfigRecord).map((base, index) => normalizeBaseProfile(base, `Base ${index + 1}`))
     : [legacyProfile];
 
   const bases = existingBases.length ? existingBases : [legacyProfile];
-  const activeBaseId = raw.activeBaseId || bases[0]?.id;
+  const activeBaseId = typeof raw.activeBaseId === "string" ? raw.activeBaseId : bases[0]?.id;
   const activeBase = bases.find((b) => b.id === activeBaseId) ?? bases[0];
-  const activeTableId = raw.activeTableId || activeBase?.tables[0]?.id;
+  const activeTableId = typeof raw.activeTableId === "string" ? raw.activeTableId : activeBase?.tables[0]?.id;
 
   return { activeBaseId, activeTableId, bases };
 }
