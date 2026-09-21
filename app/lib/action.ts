@@ -3433,11 +3433,6 @@ function normalizeImportedBudgetCode(
   if (sourceCodes && parts.length === 1) {
     const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
     const hasLevel2Child = hasImportedBudgetLevel2Child(normalized, sourceCodes);
-    const hasLevel3ChildWithAmount = hasImportedBudgetLevel3Child(
-      normalized,
-      sourceCodes,
-      sourceCodesWithAmount
-    );
     const hasLevel2ChildWithAmount = hasImportedBudgetLevel2Child(
       normalized,
       sourceCodes,
@@ -3445,9 +3440,9 @@ function normalizeImportedBudgetCode(
     );
 
     // Rule nghiệp vụ:
-    // - đã có cấp 3 thật => không import lại mã cấp 1.
-    // - có cấp 2 nhưng chưa có cấp 3 => tạo mã lá giả cấp 3.
-    // - không có mã con => giữ nguyên mã nguồn duy nhất.
+    // - mã cấp 1 có mã con thì không chuyển tiền của nó vào mã lá cấp 3.
+    // - mã cấp 2 chưa có cấp 3 có thể tạo mã lá giả cấp 3 cho chính nó.
+    // - không có mã con thì giữ nguyên mã nguồn duy nhất.
     if (normalized === "PCN001" && sourceCodesWithAmount?.has(normalized) && hasLevel2ChildWithAmount) {
       const paidLevel2Child = Array.from(sourceCodes).find((sourceCode) => {
         const childPath = getImportedBudgetCodePath(sourceCode);
@@ -3455,17 +3450,7 @@ function normalizeImportedBudgetCode(
       });
       if (paidLevel2Child) return `${paidLevel2Child}-00`;
     }
-    if (hasLevel3ChildWithAmount) return "";
-    if (hasLevel3Child) {
-      const level2Child = Array.from(sourceCodes).find((sourceCode) => {
-        const childPath = getImportedBudgetCodePath(sourceCode);
-        return childPath.length === 2 && childPath[0] === normalized;
-      });
-      if (level2Child) return `${level2Child}-00`;
-    }
-    if (hasLevel2Child) {
-      return `${normalized}-01-00`;
-    }
+    if (hasLevel3Child || hasLevel2Child) return "";
     return normalized;
   }
 
@@ -3479,10 +3464,14 @@ function normalizeImportedBudgetCode(
       sourceCodesWithAmount.has("PCN001")
     ) return "";
 
-    const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
-    // Có mã cấp 3 thật thì không import lại mã cấp 2.
-    // Chưa có cấp 3 thì tạo mã lá giả cấp 3.
-    if (hasLevel3Child) return "";
+    const hasLevel3ChildWithAmount = hasImportedBudgetLevel3Child(
+      normalized,
+      sourceCodes,
+      sourceCodesWithAmount
+    );
+    // Chỉ bỏ qua mã cấp 2 khi mã cấp 3 tương ứng đã có số tiền.
+    // Nếu cấp 3 trống hoặc bằng 0 thì vẫn tạo mã lá giả để giữ tiền cấp 2.
+    if (hasLevel3ChildWithAmount) return "";
     return `${normalized}-00`;
   }
 
