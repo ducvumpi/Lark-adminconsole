@@ -3451,7 +3451,7 @@ function normalizeImportedBudgetCode(
       if (paidLevel2Child) return `${paidLevel2Child}-00`;
     }
     if (sourceCodesWithAmount?.has(normalized) && !hasLevel2ChildWithAmount && hasLevel2Child) {
-      return `${normalized}-01-00`;
+      return `${normalized}-00-00`;
     }
     if (hasLevel3Child || hasLevel2Child) return "";
     return normalized;
