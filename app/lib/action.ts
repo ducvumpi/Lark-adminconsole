@@ -2967,6 +2967,10 @@ function extractMonthFromText(text: string): string | null {
   return `Tháng ${m}`;
 }
 
+function getImportMonthKey(month: string): string {
+  return normalizeText(month);
+}
+
 /** "Tháng 9" -> "Q3" */
 function monthLabelToQuarter(monthLabel: string): string {
   const m = parseInt(monthLabel.match(/\d+/)?.[0] ?? "0", 10);
@@ -3433,7 +3437,7 @@ function normalizeImportedBudgetCode(
   if (sourceCodes && parts.length === 1) {
     const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
     const hasLevel2Child = hasImportedBudgetLevel2Child(normalized, sourceCodes);
-    const hasLevel2ChildWithAmount = hasImportedBudgetLevel2Child(
+    const hasLevel2ChildWithAmount = hasImportedBudgetDirectLevel2ChildWithAmount(
       normalized,
       sourceCodes,
       sourceCodesWithAmount
@@ -3554,6 +3558,17 @@ function hasImportedBudgetLevel2Child(
   });
 }
 
+function hasImportedBudgetDirectLevel2ChildWithAmount(
+  code: string,
+  sourceCodes: Set<string>,
+  sourceCodesWithAmount?: Set<string>
+): boolean {
+  return Array.from(sourceCodes).some((sourceCode) => {
+    const childPath = getImportedBudgetCodePath(sourceCode);
+    return childPath.length === 2 && childPath[0] === code && sourceCodesWithAmount?.has(sourceCode) === true;
+  });
+}
+
 function getImportedBudgetCodePath(code: string): string[] {
   const parts = code.split("-").filter(Boolean);
   if (parts.length <= 1) return [code];
@@ -3616,7 +3631,7 @@ export async function importTgdBudgetExcelAction(
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sourceBudgetCodes = new Set<string>();
-    const sourceBudgetCodesWithAmount = new Set<string>();
+    const sourceBudgetCodesWithAmountByMonth = new Map<string, Set<string>>();
     for (const sheetName of workbook.SheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue;
       const sheet = workbook.Sheets[sheetName];
@@ -3630,6 +3645,7 @@ export async function importTgdBudgetExcelAction(
           .sort((a, b) => a - b)[0];
         const dataEndRow = nextSectionRow !== undefined ? nextSectionRow - 1 : range.e.r;
         const amountColumns = new Set<number>();
+        const amountColumnMonths = new Map<number, string[]>();
         for (const block of tgdBlocks) {
           const nearestHeader = findNearestHeaderSection(headerSections, block.row);
           if (nearestHeader?.row !== headerSection.row) continue;
@@ -3640,7 +3656,12 @@ export async function importTgdBudgetExcelAction(
             const value = String(getMergedCellValueXLSX(sheet, subHeaderRow, col) ?? "").trim();
             if (/^tháng\s*\d+$/i.test(value)) {
               hasMonthColumns = true;
-              if (!selectedMonths || selectedMonths.includes(value)) amountColumns.add(col);
+              if (!selectedMonths || selectedMonths.includes(value)) {
+                amountColumns.add(col);
+                const months = amountColumnMonths.get(col) ?? [];
+                months.push(value);
+                amountColumnMonths.set(col, months);
+              }
             }
           }
 
@@ -3649,6 +3670,12 @@ export async function importTgdBudgetExcelAction(
             for (const candidateRow of [headerSection.row, block.row + 1, block.row + 2, subHeaderRow]) {
               for (const brandColumn of findBrandColumnsXLSX(sheet, candidateRow, block.col, blockEnd)) {
                 amountColumns.add(brandColumn.col);
+                const monthFromTitle = extractMonthFromText(block.titleText);
+                if (monthFromTitle) {
+                  const months = amountColumnMonths.get(brandColumn.col) ?? [];
+                  months.push(monthFromTitle);
+                  amountColumnMonths.set(brandColumn.col, months);
+                }
               }
             }
           }
@@ -3662,13 +3689,13 @@ export async function importTgdBudgetExcelAction(
             sourceBudgetCodes.add(code);
             for (const col of amountColumns) {
               const rawValue = getMergedCellValueXLSX(sheet, row, col);
-              if (typeof rawValue === "number" && Number.isFinite(rawValue) && rawValue > 0) {
-                sourceBudgetCodesWithAmount.add(code);
-                break;
-              }
-              if (typeof rawValue === "string" && /^[\s\d.,-]+$/.test(rawValue.trim()) && parseMoneyValue(rawValue) > 0) {
-                sourceBudgetCodesWithAmount.add(code);
-                break;
+              if (parseMoneyValue(rawValue) > 0) {
+                for (const month of amountColumnMonths.get(col) ?? []) {
+                  const monthKey = getImportMonthKey(month);
+                  const codes = sourceBudgetCodesWithAmountByMonth.get(monthKey) ?? new Set<string>();
+                  codes.add(code);
+                  sourceBudgetCodesWithAmountByMonth.set(monthKey, codes);
+                }
               }
             }
           }
@@ -3859,7 +3886,7 @@ export async function importTgdBudgetExcelAction(
               const maNganSach = normalizeImportedBudgetCode(
                 sourceCode,
                 sourceBudgetCodes,
-                sourceBudgetCodesWithAmount
+                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(thangLabel))
               );
               if (!maNganSach) continue;
 
@@ -4065,7 +4092,7 @@ export async function importTgdBudgetExcelAction(
               const maNganSach = normalizeImportedBudgetCode(
                 sourceCode,
                 sourceBudgetCodes,
-                sourceBudgetCodesWithAmount
+                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(monthLabel))
               );
               if (!maNganSach) continue;
 
