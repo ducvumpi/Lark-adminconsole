@@ -373,7 +373,7 @@ export function getLarkClient(): LarkBaseClient {
   const cfg = getConfig();
   if (!isConfigComplete(cfg)) {
     throw new LarkApiError(
-      "Chưa cấu hình đầy đủ App ID / App Secret / Base Token / Table ID. Vào trang Cài đặt để nhập."
+      "Chưa cấu hình đầy đủ  / App Secret / Base Token / Table ID. Vào trang Cài đặt để nhập."
     );
   }
   return new LarkBaseClient();

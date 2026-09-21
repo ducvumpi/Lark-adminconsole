@@ -3421,31 +3421,158 @@ export interface TgdImportRowResult {
   reason?: string;
 }
 
-function normalizeImportedBudgetCode(code: string): string {
+function normalizeImportedBudgetCode(
+  code: string,
+  sourceCodes?: Set<string>,
+  sourceCodesWithAmount?: Set<string>
+): string {
   const normalized = normalizeBudgetCodeForComparison(code);
   const parts = normalized.split("-").filter(Boolean);
-  if (parts.length < 2) return "";
-  return parts.length === 2 && parts[1].length === 2 ? `${normalized}-00` : normalized;
+  if (parts.length === 0) return "";
+
+  if (sourceCodes && parts.length === 1) {
+    const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
+    const hasLevel2Child = hasImportedBudgetLevel2Child(normalized, sourceCodes);
+    const hasLevel3ChildWithAmount = hasImportedBudgetLevel3Child(
+      normalized,
+      sourceCodes,
+      sourceCodesWithAmount
+    );
+    const hasLevel2ChildWithAmount = hasImportedBudgetLevel2Child(
+      normalized,
+      sourceCodes,
+      sourceCodesWithAmount
+    );
+
+    // Rule nghiệp vụ:
+    // - đã có cấp 3 thật => không import lại mã cấp 1.
+    // - có cấp 2 nhưng chưa có cấp 3 => tạo mã lá giả cấp 3.
+    // - không có mã con => giữ nguyên mã nguồn duy nhất.
+    if (normalized === "PCN001" && sourceCodesWithAmount?.has(normalized) && hasLevel2ChildWithAmount) {
+      const paidLevel2Child = Array.from(sourceCodes).find((sourceCode) => {
+        const childPath = getImportedBudgetCodePath(sourceCode);
+        return childPath.length === 2 && childPath[0] === normalized && sourceCodesWithAmount.has(sourceCode);
+      });
+      if (paidLevel2Child) return `${paidLevel2Child}-00`;
+    }
+    if (hasLevel3ChildWithAmount) return "";
+    if (hasLevel3Child) {
+      const level2Child = Array.from(sourceCodes).find((sourceCode) => {
+        const childPath = getImportedBudgetCodePath(sourceCode);
+        return childPath.length === 2 && childPath[0] === normalized;
+      });
+      if (level2Child) return `${level2Child}-00`;
+    }
+    if (hasLevel2Child) {
+      return `${normalized}-01-00`;
+    }
+    return normalized;
+  }
+
+  if (sourceCodes && parts.length === 2) {
+    // Dạng nén như OFF001-0201 đã là mã cấp 3: 02 (cấp 2) + 01 (cấp 3).
+    if (parts[1].length > 2) return normalized;
+
+    if (
+      normalized.startsWith("PCN001-") &&
+      sourceCodesWithAmount?.has(normalized) &&
+      sourceCodesWithAmount.has("PCN001")
+    ) return "";
+
+    const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
+    // Có mã cấp 3 thật thì không import lại mã cấp 2.
+    // Chưa có cấp 3 thì tạo mã lá giả cấp 3.
+    if (hasLevel3Child) return "";
+    return `${normalized}-00`;
+  }
+
+  return normalized;
+}
+
+function parseMoneyValue(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (value === undefined || value === null || value === "") return 0;
+
+  const cleaned = String(value).trim();
+  if (!cleaned) return 0;
+
+  const normalized = cleaned.replace(/[^0-9,.-]/g, "");
+  if (!normalized) return 0;
+
+  const dotCount = (normalized.match(/\./g) ?? []).length;
+  const commaCount = (normalized.match(/,/g) ?? []).length;
+  let compact: string;
+
+  if (dotCount > 0 && commaCount > 0) {
+    // Khi có cả hai dấu, dấu xuất hiện sau cùng là dấu thập phân.
+    const decimalSeparator = normalized.lastIndexOf(".") > normalized.lastIndexOf(",") ? "." : ",";
+    const thousandsSeparator = decimalSeparator === "." ? "," : ".";
+    compact = normalized
+      .replaceAll(thousandsSeparator, "")
+      .replace(decimalSeparator, ".");
+  } else {
+    const separator = dotCount > 0 ? "." : ",";
+    const separatorCount = dotCount + commaCount;
+    const fractionLength = normalized.length - normalized.lastIndexOf(separator) - 1;
+    const isThousandsFormat = separatorCount > 1 || fractionLength === 3;
+    compact = isThousandsFormat
+      ? normalized.replaceAll(separator, "")
+      : normalized.replace(separator, ".");
+  }
+
+  const number = Number(compact);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function normalizeBudgetCodeForComparison(code: string): string {
   return code.trim().replace(/[_.\/\s-]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function hasImportedBudgetLevel3Child(code: string, sourceCodes: Set<string>): boolean {
-  const [parentRoot, parentSuffix] = code.split("-");
-  return Array.from(sourceCodes).some(
-    (sourceCode) => {
-      const sourceParts = sourceCode.split("-");
-      if (sourceParts.length === 3) return sourceCode.startsWith(`${code}-`);
-      return (
-        sourceParts.length === 2 &&
-        sourceParts[0] === parentRoot &&
-        sourceParts[1].startsWith(parentSuffix) &&
-        sourceParts[1].length >= parentSuffix.length + 2
-      );
-    }
-  );
+function hasImportedBudgetLevel3Child(
+  code: string,
+  sourceCodes: Set<string>,
+  sourceCodesWithAmount?: Set<string>
+): boolean {
+  const parentPath = getImportedBudgetCodePath(code);
+  return Array.from(sourceCodes).some((sourceCode) => {
+    const childPath = getImportedBudgetCodePath(sourceCode);
+    return (
+      childPath.length >= 3 &&
+      childPath.length > parentPath.length &&
+      parentPath.every((part, index) => childPath[index] === part) &&
+      (!sourceCodesWithAmount || sourceCodesWithAmount.has(sourceCode))
+    );
+  });
+}
+
+function hasImportedBudgetLevel2Child(
+  code: string,
+  sourceCodes: Set<string>,
+  sourceCodesWithAmount?: Set<string>
+): boolean {
+  const parentPath = getImportedBudgetCodePath(code);
+  return Array.from(sourceCodes).some((sourceCode) => {
+    const childPath = getImportedBudgetCodePath(sourceCode);
+    return (
+      childPath.length >= 2 &&
+      childPath.length > parentPath.length &&
+      parentPath.every((part, index) => childPath[index] === part) &&
+      (!sourceCodesWithAmount || sourceCodesWithAmount.has(sourceCode))
+    );
+  });
+}
+
+function getImportedBudgetCodePath(code: string): string[] {
+  const parts = code.split("-").filter(Boolean);
+  if (parts.length <= 1) return [code];
+  if (parts.length > 2) return parts.map((_, index) => parts.slice(0, index + 1).join("-"));
+
+  const [root, suffix] = parts;
+  const path = [root];
+  for (let length = 2; length <= suffix.length; length += 2) {
+    path.push(`${root}-${suffix.slice(0, length)}`);
+  }
+  return path;
 }
 
 /** Thông tin chẩn đoán cho từng sheet — trả về kèm kết quả import để người dùng
@@ -3497,22 +3624,62 @@ export async function importTgdBudgetExcelAction(
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sourceBudgetCodes = new Set<string>();
+    const sourceBudgetCodesWithAmount = new Set<string>();
     for (const sheetName of workbook.SheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue;
       const sheet = workbook.Sheets[sheetName];
       const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
       const headerSections = findAllHeaderSectionsXLSX(sheet, range.e.r, range.e.c + 1);
+      const tgdBlocks = findAllTgdBlocksXLSX(sheet, range.e.r, range.e.c + 1);
       for (const headerSection of headerSections) {
         const nextSectionRow = headerSections
           .map((section) => section.row)
           .filter((row) => row > headerSection.row)
           .sort((a, b) => a - b)[0];
         const dataEndRow = nextSectionRow !== undefined ? nextSectionRow - 1 : range.e.r;
+        const amountColumns = new Set<number>();
+        for (const block of tgdBlocks) {
+          const nearestHeader = findNearestHeaderSection(headerSections, block.row);
+          if (nearestHeader?.row !== headerSection.row) continue;
+
+          const subHeaderRow = headerSection.row + 1;
+          let hasMonthColumns = false;
+          for (let col = block.col; col < block.col + 8; col++) {
+            const value = String(getMergedCellValueXLSX(sheet, subHeaderRow, col) ?? "").trim();
+            if (/^tháng\s*\d+$/i.test(value)) {
+              hasMonthColumns = true;
+              if (!selectedMonths || selectedMonths.includes(value)) amountColumns.add(col);
+            }
+          }
+
+          if (!hasMonthColumns) {
+            const blockEnd = block.colEnd > block.col + 1 ? block.colEnd : range.e.c + 1;
+            for (const candidateRow of [headerSection.row, block.row + 1, block.row + 2, subHeaderRow]) {
+              for (const brandColumn of findBrandColumnsXLSX(sheet, candidateRow, block.col, blockEnd)) {
+                amountColumns.add(brandColumn.col);
+              }
+            }
+          }
+        }
+
         for (let row = headerSection.row + 1; row <= dataEndRow; row++) {
           const code = normalizeBudgetCodeForComparison(
             String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
           );
-          if (code) sourceBudgetCodes.add(code);
+          if (code) {
+            sourceBudgetCodes.add(code);
+            for (const col of amountColumns) {
+              const rawValue = getMergedCellValueXLSX(sheet, row, col);
+              if (typeof rawValue === "number" && Number.isFinite(rawValue) && rawValue > 0) {
+                sourceBudgetCodesWithAmount.add(code);
+                break;
+              }
+              if (typeof rawValue === "string" && /^[\s\d.,-]+$/.test(rawValue.trim()) && parseMoneyValue(rawValue) > 0) {
+                sourceBudgetCodesWithAmount.add(code);
+                break;
+              }
+            }
+          }
         }
       }
     }
@@ -3540,6 +3707,7 @@ export async function importTgdBudgetExcelAction(
     const batchId = randomUUID();
     const results: TgdImportRowResult[] = [];
     const debug: SheetDebugInfo[] = [];
+    const syntheticRecordTotals = new Map<string, { recordId: string; total: number }>();
     let created = 0;
     let updated = 0;
     let skipped = 0;
@@ -3689,18 +3857,42 @@ export async function importTgdBudgetExcelAction(
             const sourceCode = normalizeBudgetCodeForComparison(
               String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
             );
-            const maNganSach =
-              sourceCode.split("-").length === 2 && hasImportedBudgetLevel3Child(sourceCode, sourceBudgetCodes)
-                ? ""
-                : normalizeImportedBudgetCode(sourceCode);
-            if (!maNganSach) continue;
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
 
             for (const { label: thangLabel, col: monthCol } of monthCols) {
               const rawAmount = getMergedCellValueXLSX(sheet, row, monthCol);
-              const soTien = typeof rawAmount === "number" ? rawAmount : 0;
+              const soTien = parseMoneyValue(rawAmount);
               if (rawAmount === undefined || rawAmount === null || rawAmount === "" || soTien === 0) continue;
+              const maNganSach = normalizeImportedBudgetCode(
+                sourceCode,
+                sourceBudgetCodes,
+                sourceBudgetCodesWithAmount
+              );
+              if (!maNganSach) continue;
+
+              const isSyntheticCode = maNganSach !== sourceCode && maNganSach.endsWith("-00");
+              const syntheticSourceCode = isSyntheticCode ? maNganSach.slice(0, -3) : "";
+              if (
+                isSyntheticCode &&
+                !getImportedBudgetCodePath(syntheticSourceCode).includes(sourceCode)
+              ) continue;
+
+              const syntheticKey = maNganSach !== sourceCode
+                ? JSON.stringify([brand, quarterRaw, nam, thangLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat])
+                : "";
+              const existingSynthetic = syntheticKey ? syntheticRecordTotals.get(syntheticKey) : undefined;
+              if (existingSynthetic) {
+                existingSynthetic.total += soTien;
+                await client.updateRecord(
+                  existingSynthetic.recordId,
+                  { [F("Số tiền TGĐ duyệt")]: existingSynthetic.total },
+                  fieldTypeMap
+                );
+                updated++;
+                results.push({ sheetName, brand, quarter: quarterRaw, hangMuc, maNganSach, thang: thangLabel, soTien, action: "updated" });
+                continue;
+              }
 
               const fieldsToSend: Record<string, unknown> = {
                 [F("Brand")]: brand,
@@ -3724,6 +3916,7 @@ export async function importTgdBudgetExcelAction(
               try {
                 const newRecord = await client.createRecord(coercedFields);
                 created++;
+                if (syntheticKey) syntheticRecordTotals.set(syntheticKey, { recordId: newRecord.record_id, total: soTien });
                 results.push({ sheetName, brand, quarter: quarterRaw, hangMuc, maNganSach, thang: thangLabel, soTien, action: "created" });
                 await appendAuditLog({
                   timestamp: new Date().toISOString(),
@@ -3868,11 +4061,6 @@ export async function importTgdBudgetExcelAction(
             const sourceCode = normalizeBudgetCodeForComparison(
               String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
             );
-            const maNganSach =
-              sourceCode.split("-").length === 2 && hasImportedBudgetLevel3Child(sourceCode, sourceBudgetCodes)
-                ? ""
-                : normalizeImportedBudgetCode(sourceCode);
-            if (!maNganSach) continue;
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
             const khoanNganSach =
@@ -3880,11 +4068,50 @@ export async function importTgdBudgetExcelAction(
 
             for (const brandCol of brandColumns) {
               const rawAmount = getMergedCellValueXLSX(sheet, row, brandCol.col);
-              const soTien = typeof rawAmount === "number" ? rawAmount : 0;
+              const soTien = parseMoneyValue(rawAmount);
               if (rawAmount === undefined || rawAmount === null || rawAmount === "" || soTien === 0) continue;
+              const maNganSach = normalizeImportedBudgetCode(
+                sourceCode,
+                sourceBudgetCodes,
+                sourceBudgetCodesWithAmount
+              );
+              if (!maNganSach) continue;
+
+              const isSyntheticCode = maNganSach !== sourceCode && maNganSach.endsWith("-00");
+              const syntheticSourceCode = isSyntheticCode ? maNganSach.slice(0, -3) : "";
+              if (
+                isSyntheticCode &&
+                !getImportedBudgetCodePath(syntheticSourceCode).includes(sourceCode)
+              ) continue;
+
+              const effectiveBrand = isTradeBudget ? "N/A" : brandCol.name;
+              const syntheticKey = maNganSach !== sourceCode
+                ? JSON.stringify([effectiveBrand, quarterBrandLayout, namBrandLayout, monthLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat])
+                : "";
+              const existingSynthetic = syntheticKey ? syntheticRecordTotals.get(syntheticKey) : undefined;
+              if (existingSynthetic) {
+                existingSynthetic.total += soTien;
+                await client.updateRecord(
+                  existingSynthetic.recordId,
+                  { [F("Số tiền TGĐ duyệt")]: existingSynthetic.total },
+                  fieldTypeMap
+                );
+                updated++;
+                results.push({
+                  sheetName,
+                  brand: effectiveBrand,
+                  quarter: quarterBrandLayout,
+                  hangMuc,
+                  maNganSach,
+                  thang: monthLabel,
+                  soTien,
+                  action: "updated",
+                });
+                continue;
+              }
 
               const fieldsToSend: Record<string, unknown> = {
-                [F("Brand")]: isTradeBudget ? "N/A" : brandCol.name,
+                [F("Brand")]: effectiveBrand,
                 [F("Quý ngân sách")]: quarterBrandLayout,
                 [F("Năm")]: namBrandLayout,
                 [F("Tháng ngân sách")]: monthLabel,
@@ -3904,9 +4131,10 @@ export async function importTgdBudgetExcelAction(
               ); try {
                 const newRecord = await client.createRecord(coercedFields);
                 created++;
+                if (syntheticKey) syntheticRecordTotals.set(syntheticKey, { recordId: newRecord.record_id, total: soTien });
                 results.push({
                   sheetName,
-                  brand: isTradeBudget ? "N/A" : brandCol.name,
+                  brand: effectiveBrand,
                   quarter: quarterBrandLayout,
                   hangMuc,
                   maNganSach,
