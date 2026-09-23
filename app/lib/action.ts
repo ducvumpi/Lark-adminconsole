@@ -3626,10 +3626,15 @@ export async function importTgdBudgetExcelAction(
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sourceBudgetCodes = new Set<string>();
-    const sourceBudgetCodesWithAmountByMonth = new Map<string, Set<string>>();
+    const sourceBudgetCodesBySheet = new Map<string, Set<string>>();
+    const sourceBudgetCodesWithAmountBySheetAndMonth = new Map<string, Map<string, Set<string>>>();
     for (const sheetName of workbook.SheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue;
+      const sourceBudgetCodes = sourceBudgetCodesBySheet.get(sheetName) ?? new Set<string>();
+      const sourceBudgetCodesWithAmountByMonth =
+        sourceBudgetCodesWithAmountBySheetAndMonth.get(sheetName) ?? new Map<string, Set<string>>();
+      sourceBudgetCodesBySheet.set(sheetName, sourceBudgetCodes);
+      sourceBudgetCodesWithAmountBySheetAndMonth.set(sheetName, sourceBudgetCodesWithAmountByMonth);
       const sheet = workbook.Sheets[sheetName];
       const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
       const headerSections = findAllHeaderSectionsXLSX(sheet, range.e.r, range.e.c + 1);
@@ -3684,7 +3689,8 @@ export async function importTgdBudgetExcelAction(
           if (code) {
             sourceBudgetCodes.add(code);
             for (const col of amountColumns) {
-              const rawValue = getMergedCellValueXLSX(sheet, row, col);
+              // Không lan giá trị tiền của ô merge dọc xuống các dòng mã con.
+              const rawValue = getDirectCellValueXLSX(sheet, row, col);
               if (parseMoneyValue(rawValue) > 0) {
                 for (const month of amountColumnMonths.get(col) ?? []) {
                   const monthKey = getImportMonthKey(month);
@@ -3729,6 +3735,10 @@ export async function importTgdBudgetExcelAction(
 
     for (const sheetName of workbook.SheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue; // sheet không được chọn -> bỏ qua
+
+      const sourceBudgetCodes = sourceBudgetCodesBySheet.get(sheetName) ?? new Set<string>();
+      const sourceBudgetCodesWithAmountByMonth =
+        sourceBudgetCodesWithAmountBySheetAndMonth.get(sheetName) ?? new Map<string, Set<string>>();
 
       const sheet = workbook.Sheets[sheetName];
       const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
@@ -3876,7 +3886,7 @@ export async function importTgdBudgetExcelAction(
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
 
             for (const { label: thangLabel, col: monthCol } of monthCols) {
-              const rawAmount = getMergedCellValueXLSX(sheet, row, monthCol);
+              const rawAmount = getDirectCellValueXLSX(sheet, row, monthCol);
               const soTien = parseMoneyValue(rawAmount);
               if (rawAmount === undefined || rawAmount === null || rawAmount === "" || soTien === 0) continue;
               const maNganSach = normalizeImportedBudgetCode(
@@ -4082,7 +4092,7 @@ export async function importTgdBudgetExcelAction(
               khoanNganSachColIdx >= 0 ? String(getMergedCellValueXLSX(sheet, row, khoanNganSachColIdx) ?? "").trim() : "";
 
             for (const brandCol of brandColumns) {
-              const rawAmount = getMergedCellValueXLSX(sheet, row, brandCol.col);
+              const rawAmount = getDirectCellValueXLSX(sheet, row, brandCol.col);
               const soTien = parseMoneyValue(rawAmount);
               if (rawAmount === undefined || rawAmount === null || rawAmount === "" || soTien === 0) continue;
               const maNganSach = normalizeImportedBudgetCode(
