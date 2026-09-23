@@ -2883,7 +2883,6 @@ async function appendAuditLog(entry: AuditLogEntry): Promise<void> {
   try {
     const dir = path.dirname(AUDIT_LOG_PATH);
     await fs.mkdir(dir, { recursive: true });
-
     let existing: AuditLogEntry[] = [];
     try {
       const raw = await fs.readFile(AUDIT_LOG_PATH, "utf-8");
@@ -2892,12 +2891,9 @@ async function appendAuditLog(entry: AuditLogEntry): Promise<void> {
     } catch {
       existing = [];
     }
-
     existing.push(entry);
     await fs.writeFile(AUDIT_LOG_PATH, JSON.stringify(existing, null, 2), "utf-8");
   } catch (err: any) {
-    // Trên production (Vercel) filesystem là read-only — không throw ra ngoài,
-    // vì audit log chỉ là log phụ, không nên làm hỏng kết quả của action chính.
     console.error("Không thể ghi audit log (bỏ qua, không ảnh hưởng kết quả chính):", err.message);
   }
 }
