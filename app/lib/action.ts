@@ -3710,6 +3710,7 @@ export async function importTgdBudgetExcelAction(
     const Fopt = await buildOptionalFieldNameResolver(client);
     const khoanNganSachField = Fopt("Khoản ngân sách");
     const lanDeXuatField = Fopt("Lần đề xuất"); // 👈 thêm dòng này — đổi tên cho khớp đúng field thật trong Base nếu khác
+    const phanLoaiNguonNsField = F("Phân loại nguồn NS");
     const allFieldsMeta = await client.listFields();
     const fieldMetaMap = buildFieldMetaMap(allFieldsMeta);
     const fieldTypeMap = new Map<string, number>(
@@ -3926,6 +3927,7 @@ export async function importTgdBudgetExcelAction(
                 [F("Tháng ngân sách")]: thangLabel,
                 [F("Mã ngân sách")]: maNganSach,
                 [F("Số tiền TGĐ duyệt")]: soTien,
+                [phanLoaiNguonNsField]: "Nguồn ngân sách Import",
                 ...(loaiNganSach ? { [F("Loại ngân sách")]: loaiNganSach } : {}),
                 ...(loaiDeXuat ? { [F("Loại đề xuất")]: loaiDeXuat } : {}),
                 ...(lanDeXuatField && lanDeXuat ? { [lanDeXuatField]: lanDeXuat } : {}), // 👈 thêm dòng này
@@ -4142,6 +4144,7 @@ export async function importTgdBudgetExcelAction(
                 [F("Tháng ngân sách")]: monthLabel,
                 [F("Mã ngân sách")]: maNganSach,
                 [F("Số tiền TGĐ duyệt")]: soTien,
+                [phanLoaiNguonNsField]: "Nguồn ngân sách Import",
                 ...(khoanNganSachField && khoanNganSach ? { [khoanNganSachField]: khoanNganSach } : {}),
                 ...(loaiNganSach ? { [F("Loại ngân sách")]: loaiNganSach } : {}),
                 ...(loaiDeXuat ? { [F("Loại đề xuất")]: loaiDeXuat } : {}),
@@ -4416,6 +4419,5 @@ export async function undoImportBatchAction(
     return { success: false, message: err.message || "Hoàn tác batch thất bại." };
   }
 }
-
 
 
