@@ -72,8 +72,13 @@ function normalizeRawValue(value: unknown): unknown {
     return "";
   }
   if (typeof value === "object") {
-    if (Array.isArray(value) && value.length > 0 && "type" in value[0]) {
-      return value; // Rich Text Array của Lark — giữ nguyên
+    if (Array.isArray(value) && value.length > 0) {
+      const firstItem = value[0];
+      const isRichText = typeof firstItem === "object" && firstItem !== null && "type" in firstItem;
+      const isAttachmentList = value.every(
+        (item) => typeof item === "object" && item !== null && "file_token" in item
+      );
+      if (isRichText || isAttachmentList) return value;
     }
     return JSON.stringify(value);
   }
@@ -140,6 +145,31 @@ export class LarkBaseClient {
   private async authHeader() {
     const token = await this.getAccessToken();
     return { Authorization: `Bearer ${token}` };
+  }
+
+  async uploadAttachment(fileName: string, fileBytes: Uint8Array): Promise<string> {
+    const headers = await this.authHeader();
+    const { apiBaseUrl, baseAppToken } = getConfig();
+    const formData = new FormData();
+    formData.set("file_name", fileName);
+    formData.set("parent_type", "bitable_file");
+    formData.set("parent_node", baseAppToken);
+    formData.set("extra", JSON.stringify({ drive_route_token: baseAppToken }));
+    formData.set("size", String(fileBytes.byteLength));
+    const blobBytes = new ArrayBuffer(fileBytes.byteLength);
+    new Uint8Array(blobBytes).set(fileBytes);
+    formData.set("file", new Blob([blobBytes], { type: "application/octet-stream" }), fileName);
+
+    const response = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/drive/v1/medias/upload_all`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    const result = await response.json();
+    if (!response.ok || result.code !== 0 || typeof result.data?.file_token !== "string") {
+      throw new LarkApiError(`Tải ảnh lên Lark thất bại (code ${result.code ?? response.status}): ${result.msg ?? response.statusText}`);
+    }
+    return result.data.file_token;
   }
 
   private tablePath(suffix = "") {
@@ -209,24 +239,24 @@ export class LarkBaseClient {
   }
   /** Lấy CHÍNH XÁC 1 record theo record_id — dùng để xác minh trực tiếp record có tồn tại trong
    * đúng Base/Table đang cấu hình hay không (hữu ích khi debug "audit log có, nhưng Base không thấy"). */
- async getRecord(recordId: string): Promise<LarkRecord | null> {
-  const headers = await this.authHeader();
-  try {
-    const res = await this.http.get<any>(this.tablePath(`/records/${recordId}`), {
-      headers,
-      params: { automatic_fields: true }, // như trên — cần cho Lookup/Formula
-    });
-    if (res.data.code !== 0) {
-      throw new LarkApiError(`Lấy record lỗi (code ${res.data.code}): ${res.data.msg}`);
+  async getRecord(recordId: string): Promise<LarkRecord | null> {
+    const headers = await this.authHeader();
+    try {
+      const res = await this.http.get<any>(this.tablePath(`/records/${recordId}`), {
+        headers,
+        params: { automatic_fields: true }, // như trên — cần cho Lookup/Formula
+      });
+      if (res.data.code !== 0) {
+        throw new LarkApiError(`Lấy record lỗi (code ${res.data.code}): ${res.data.msg}`);
+      }
+      return res.data.data.record;
+    } catch (err: any) {
+      if (err.response?.status === 404 || err.response?.data?.code === 1254043) {
+        return null;
+      }
+      throw err;
     }
-    return res.data.data.record;
-  } catch (err: any) {
-    if (err.response?.status === 404 || err.response?.data?.code === 1254043) {
-      return null;
-    }
-    throw err;
   }
-}
   async createRecord(
     fields: Record<string, unknown>,
     fieldTypeMap?: Map<string, number>

@@ -23,6 +23,15 @@ import {
 } from "./config";
 export type ActionResult<T = undefined> = { success: true; data?: T } | { success: false; message: string };
 
+export type InvitationImportSummary = {
+  scanned: number;
+  uploaded: number;
+  alreadyAttached: number;
+  unmatched: string[];
+  ambiguous: { fileName: string; names: string[] }[];
+  failed: { fileName: string; reason: string }[];
+};
+
 /** Ép dữ liệu về plain object/array thuần túy (loại bỏ mọi class instance, method, prototype lạ)
  * trước khi trả về cho Client Component, tránh lỗi "Only plain objects can be passed...". */
 function toPlain<T>(value: T): T {
@@ -213,6 +222,129 @@ export async function findDuplicateBudgetRecordsAction(): Promise<ActionResult<{
     return { success: true, data: duplicates };
   } catch (err: any) {
     return { success: false, message: err.message || "Lỗi không xác định" };
+  }
+}
+
+const INVITATION_IMAGE_DIRECTORY = "C:\\Users\\Win10\\Desktop\\Thư mời";
+const INVITATION_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]);
+
+function normalizeEmployeeCode(value: unknown): string {
+  const text = String(value ?? "").trim();
+  if (!/^\d+$/.test(text)) return "";
+  return text.replace(/^0+(?=\d)/, "");
+}
+
+export async function importInvitationImagesAction(): Promise<ActionResult<InvitationImportSummary>> {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get(SESSION_COOKIE)?.value !== getExpectedSessionValue()) {
+      return { success: false, message: "Phiên đăng nhập không hợp lệ." };
+    }
+
+    const entries = await fs.readdir(INVITATION_IMAGE_DIRECTORY, { withFileTypes: true });
+    const imageFiles = entries
+      .filter((entry) => entry.isFile() && INVITATION_IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b, "vi"));
+    const summary: InvitationImportSummary = {
+      scanned: imageFiles.length,
+      uploaded: 0,
+      alreadyAttached: 0,
+      unmatched: [],
+      ambiguous: [],
+      failed: [],
+    };
+
+    const client = getLarkClient();
+    const fields = await client.listFields();
+    const employeeCodeField = fields.find((field) => field.field_name === "Mã NV");
+    const invitationField = fields.find((field) => field.field_name === "Thư Mời");
+    if (!employeeCodeField || !invitationField) {
+      return { success: false, message: "Không tìm thấy cột 'Mã NV' hoặc 'Thư Mời' trong bảng Lark hiện tại." };
+    }
+    if (invitationField.type !== 17) {
+      return { success: false, message: "Cột 'Thư Mời' hiện không phải loại Tệp đính kèm." };
+    }
+
+    const records: LarkRecord[] = [];
+    let pageToken: string | undefined;
+    do {
+      const page = await client.listRecords({
+        pageSize: 500,
+        pageToken,
+        fieldNames: ["Mã NV", "Họ và tên", "Thư Mời"],
+      });
+      records.push(...page.items);
+      pageToken = page.hasMore ? page.pageToken : undefined;
+    } while (pageToken);
+
+    const recordsByEmployeeCode = new Map<string, LarkRecord[]>();
+    for (const record of records) {
+      const key = normalizeEmployeeCode(record.fields["Mã NV"]);
+      if (!key) continue;
+      const matchingRecords = recordsByEmployeeCode.get(key) ?? [];
+      matchingRecords.push(record);
+      recordsByEmployeeCode.set(key, matchingRecords);
+    }
+
+    for (const fileName of imageFiles) {
+      const separator = fileName.indexOf("_");
+      if (separator <= 0 || separator === fileName.length - 1) {
+        summary.unmatched.push(fileName);
+        continue;
+      }
+
+      const employeeCode = fileName.slice(0, separator);
+      if (!/^\d+$/.test(employeeCode)) {
+        summary.unmatched.push(fileName);
+        continue;
+      }
+      const matchingRecords = recordsByEmployeeCode.get(normalizeEmployeeCode(employeeCode)) ?? [];
+      if (matchingRecords.length === 0) {
+        summary.unmatched.push(fileName);
+        continue;
+      }
+      if (matchingRecords.length > 1) {
+        summary.ambiguous.push({
+          fileName,
+          names: matchingRecords.map((record) => `${record.fields["Mã NV"] ?? ""} - ${record.fields["Họ và tên"] ?? ""}`),
+        });
+        continue;
+      }
+
+      const record = matchingRecords[0];
+      const attachments = Array.isArray(record.fields["Thư Mời"])
+        ? record.fields["Thư Mời"] as Record<string, unknown>[]
+        : [];
+      if (attachments.some((attachment) => String(attachment.name ?? "").toLocaleLowerCase("vi") === fileName.toLocaleLowerCase("vi"))) {
+        summary.alreadyAttached++;
+        continue;
+      }
+
+      try {
+        const fileBytes = await fs.readFile(path.join(INVITATION_IMAGE_DIRECTORY, fileName));
+        if (fileBytes.byteLength > 20 * 1024 * 1024) {
+          throw new Error("Ảnh vượt quá giới hạn 20 MB của API Lark.");
+        }
+        const fileToken = await client.uploadAttachment(fileName, fileBytes);
+        await client.updateRecord(record.record_id, {
+          "Thư Mời": [...attachments, { file_token: fileToken }],
+        });
+        summary.uploaded++;
+      } catch (error) {
+        summary.failed.push({
+          fileName,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return { success: true, data: summary };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Import ảnh thư mời thất bại.",
+    };
   }
 }
 
@@ -4419,5 +4551,24 @@ export async function undoImportBatchAction(
     return { success: false, message: err.message || "Hoàn tác batch thất bại." };
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

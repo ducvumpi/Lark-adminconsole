@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import SuspiciousSourceRecordsPanel from "./SuspiciousSourceRecordsPanel";
 import BudgetLevelViolationPanel from "@/app/components/BudgetLevelViolationPanel";
 import BudgetHierarchyAuditPanel from "@/app/components/BudgetHierarchyAuditPanel";
+import ImportInvitationImagesPanel from "@/app/components/ImportInvitationImagesPanel";
 const FIELD_TYPE_LABEL: Record<string, string> = {
     1: "Single Select",
     2: "Multi Select",
@@ -298,6 +299,7 @@ export default function SpaDashboard({
                             </div>
                         </div>
                         <div className="space-y-4">
+                            <ImportInvitationImagesPanel />
                             <DeleteNegativeRecordsPanel />
                             <DuplicateLevel1CodesPanel />
                             <SuspiciousSourceRecordsPanel />
