@@ -3,10 +3,18 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, getExpectedSessionValue } from "@/app/lib/auth";
 
 function withFramePolicy(response: NextResponse) {
-  const ancestors = (process.env.FRAME_ANCESTORS || "'self'")
+  const configuredAncestors = (process.env.FRAME_ANCESTORS || "'self'")
     .split(/[\s,]+/)
-    .filter(Boolean)
-    .join(" ");
+    .filter(Boolean);
+  const ancestors = configuredAncestors.map((ancestor) => {
+    if (ancestor === "'self'" || ancestor === "*") return ancestor;
+
+    try {
+      return new URL(ancestor).origin;
+    } catch {
+      return "";
+    }
+  }).filter(Boolean).join(" ") || "'self'";
   response.headers.set("Content-Security-Policy", `frame-ancestors ${ancestors}`);
   response.headers.delete("X-Frame-Options");
   return response;
