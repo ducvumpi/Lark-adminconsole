@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Embedding in a workspace iframe
+
+Set `FRAME_ANCESTORS` to a space-separated list of allowed ancestor origins, including scheme and optional port, for example:
+
+```env
+FRAME_ANCESTORS=https://workspace.example.com https://admin.example.com
+```
+
+The response uses this value in `Content-Security-Policy: frame-ancestors`. If it is unset, only same-origin framing is allowed (`'self'`). The session cookie is issued as `SameSite=None; Secure` for cross-site iframe requests, so the console must be served over HTTPS. Browsers or workspace policies may still block third-party cookies.
+
 ## Getting Started
 
 First, run the development server:

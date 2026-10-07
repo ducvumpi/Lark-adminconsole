@@ -55,7 +55,8 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, sessionValue, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "none",
+    secure: true,
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 ngày
   });

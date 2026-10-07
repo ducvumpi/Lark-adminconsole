@@ -2,17 +2,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, getExpectedSessionValue } from "@/app/lib/auth";
 
-export function middleware(req: NextRequest) {
+function withFramePolicy(response: NextResponse) {
+  const ancestors = (process.env.FRAME_ANCESTORS || "'self'")
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .join(" ");
+  response.headers.set("Content-Security-Policy", `frame-ancestors ${ancestors}`);
+  response.headers.delete("X-Frame-Options");
+  return response;
+}
+
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Bỏ qua middleware auth cookie cho route dành riêng cho bot/Botpress —
   // các route này tự xác thực bằng header x-api-key trong route handler.
   if (pathname.startsWith("/api/bot")) {
-    return NextResponse.next();
+    return withFramePolicy(NextResponse.next());
   }
 
   if (pathname === "/login") {
-    return NextResponse.next();
+    return withFramePolicy(NextResponse.next());
   }
 
   const expected = getExpectedSessionValue();
@@ -23,10 +33,10 @@ export function middleware(req: NextRequest) {
   if (!isLoggedIn) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+    return withFramePolicy(NextResponse.redirect(loginUrl));
   }
 
-  return NextResponse.next();
+  return withFramePolicy(NextResponse.next());
 }
 
 export const config = {
