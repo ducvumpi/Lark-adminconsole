@@ -112,7 +112,7 @@ export default function SpaDashboard({
     return (
         <div className="spa-shell">
             <aside className="sidebar-nav">
-                <div className="sidebar-brand">🗂 Lark Base Manager</div>
+                <div className="sidebar-brand">Lark Base Manager</div>
 
                 <div className="sidebar-section">
                     {tabs.map((tab) => (

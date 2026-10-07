@@ -1,12 +1,12 @@
 {
-  "activeBaseId": "base-1790837598601",
-  "activeTableId": "table-1790837622862-8f6o",
+  "activeBaseId": "default",
+  "activeTableId": "table-1787198822796-h67a",
   "bases": [
     {
       "id": "default",
       "name": "Base Ngân sách",
-      "appId": "cli_aa881b5fa0781eea",
-      "appSecret": "JHI7zcXxJkDQCnpXKfFmQcsquJjabbCA",
+      "appId": "cli_aab9d527eda25eea",
+      "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
       "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
       "apiBaseUrl": "https://open.larksuite.com/open-apis",
       "tables": [

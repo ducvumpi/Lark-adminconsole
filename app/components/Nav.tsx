@@ -25,22 +25,23 @@ export default function Nav() {
   }
 
   return (
-    <nav className="sidebar">
-      <div className="sidebar-title">🗂 Lark Base Manager</div>
-      {/* {LINKS.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className={`nav-link ${pathname === link.href ? "active" : ""}`}
-        >
-          {link.label}
-        </Link>
-      ))} */}
-      <div className="sidebar-footer">
-        <button className="btn btn-sm" style={{ width: "100%" }} onClick={handleLogout}>
-          Đăng xuất
-        </button>
-      </div>
-    </nav>
+    // <nav className="sidebar">
+    //   <div className="sidebar-title">Lark Base Manager</div>
+    //   {/* {LINKS.map((link) => (
+    //     <Link
+    //       key={link.href}
+    //       href={link.href}
+    //       className={`nav-link ${pathname === link.href ? "active" : ""}`}
+    //     >
+    //       {link.label}
+    //     </Link>
+    //   ))} */}
+    //   <div className="sidebar-footer">
+    //     <button className="btn btn-sm" style={{ width: "100%" }} onClick={handleLogout}>
+    //       Đăng xuất
+    //     </button>
+    //   </div>
+    // </nav>
+    <></>
   );
 }
