@@ -1,5 +1,6 @@
 ﻿
-
+import type { LarkBaseClient, LarkRecord } from "./lark-client";
+import { parseUserQuery, inferFieldCandidates, buildLarkFilter, scanRecords } from "./query-helpers";
 export async function searchRecords(
   query: string,
   fieldNames: string[],
