@@ -29,9 +29,13 @@ interface ImportedBudgetTotal {
 
 interface ImportedBrandTotal {
   brand: string;
+  month: string;
+  quarter: string;
   level1: ImportedBudgetTotal[];
   level2: ImportedBudgetTotal[];
   level3: ImportedBudgetTotal[];
+  leafCodes: ImportedBudgetTotal[];
+  importedCodes: ImportedBudgetTotal[];
 }
 
 function normalizeBudgetCode(code: string): string {
@@ -57,6 +61,7 @@ function getImportedBudgetTotals(results: TgdImportRowResult[]): {
   brands: ImportedBrandTotal[];
 } {
   const byBrand = new Map<string, Map<string, { code: string; amount: number }>>();
+  const groupDetails = new Map<string, { brand: string; month: string; quarter: string }>();
 
   for (const row of results) {
     if (row.action === "skipped") continue;
@@ -64,21 +69,25 @@ function getImportedBudgetTotals(results: TgdImportRowResult[]): {
     if (!code) continue;
 
     const brand = row.brand.trim() || "Không xác định Brand";
-    const current = byBrand.get(brand) ?? new Map();
+    const month = row.thang.trim() || "Không xác định tháng";
+    const quarter = row.quarter.trim();
+    const groupKey = JSON.stringify([brand, quarter, month]);
+    groupDetails.set(groupKey, { brand, month, quarter });
+    const current = byBrand.get(groupKey) ?? new Map();
     const normalizedCode = normalizeBudgetCode(code);
     const existing = current.get(normalizedCode);
     current.set(normalizedCode, {
       code: existing?.code ?? code,
       amount: (existing?.amount ?? 0) + row.soTien,
     });
-    byBrand.set(brand, current);
+    byBrand.set(groupKey, current);
   }
 
   const getDepth = (code: string) => getBudgetCodePath(code).length;
 
   return {
     brands: Array.from(byBrand.entries())
-      .map(([brand, codeMap]) => {
+      .map(([groupKey, codeMap]) => {
         const calculated = new Map(codeMap);
         const allCodes = new Set(codeMap.keys());
         for (const code of codeMap.keys()) {
@@ -127,9 +136,21 @@ function getImportedBudgetTotals(results: TgdImportRowResult[]): {
           }))
           .sort((a, b) => a.code.localeCompare(b.code));
 
-        return { brand, level1, level2, level3 };
+        // Only imported root codes (level 0) without descendants qualify.
+        const leafCodes = Array.from(codeMap.entries())
+          .filter(([code]) => getDepth(code) === 1 && !Array.from(codeMap.keys()).some((candidate) =>
+            candidate !== code && getBudgetCodePath(candidate).slice(0, -1).includes(code)
+          ))
+          .map(([, item]) => item)
+          .sort((a, b) => a.code.localeCompare(b.code));
+        const importedCodes = Array.from(codeMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+        return { ...groupDetails.get(groupKey)!, level1, level2, level3, leafCodes, importedCodes };
       })
-      .sort((a, b) => a.brand.localeCompare(b.brand)),
+      .sort((a, b) =>
+        a.month.localeCompare(b.month, "vi", { numeric: true }) ||
+        a.brand.localeCompare(b.brand) ||
+        a.quarter.localeCompare(b.quarter, "vi", { numeric: true })
+      ),
   };
 }
 
@@ -178,6 +199,7 @@ export default function ImportWizard({
   onProgressStateChange?: (popup: ProgressPopupState | null) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewRequestRef = useRef(0);
   const progressTickerRef = useRef<number | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileSelections, setFileSelections] = useState<FileSelectionState[]>([]);
@@ -253,10 +275,15 @@ export default function ImportWizard({
 
   async function handleFileChange() {
     const files = Array.from(fileInputRef.current?.files ?? []);
-    if (files.length === 0) return;
+    const requestId = ++previewRequestRef.current;
     setSelectedFiles(files);
     setFileSelections([]);
     setError(null);
+    setStep("upload");
+    if (files.length === 0) {
+      setLoadingPreview(false);
+      return;
+    }
     setLoadingPreview(true);
 
     try {
@@ -265,6 +292,8 @@ export default function ImportWizard({
         const fd = new FormData();
         fd.append("file", file);
         const res = await listSheetsAndMonthsAction(fd);
+        // A newer selection owns the preview, even if this request finishes later.
+        if (requestId !== previewRequestRef.current) return;
         if (!res.success) {
           setError(res.message);
           return;
@@ -286,9 +315,10 @@ export default function ImportWizard({
       setFileSelections(previews);
       setStep("select");
     } catch (e) {
+      if (requestId !== previewRequestRef.current) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoadingPreview(false);
+      if (requestId === previewRequestRef.current) setLoadingPreview(false);
     }
   }
 
@@ -591,6 +621,8 @@ export default function ImportWizard({
   }
 
   function resetAll() {
+    previewRequestRef.current++;
+    setLoadingPreview(false);
     setSelectedFiles([]);
     setFileSelections([]);
     setResult(null);
@@ -608,6 +640,8 @@ export default function ImportWizard({
 
   const importedNothing = result && result.created === 0 && result.updated === 0 && result.skipped === 0;
   const importedBudgetTotals = result ? getImportedBudgetTotals(result.results) : { brands: [] };
+  const importedMonths = Array.from(new Set(importedBudgetTotals.brands.map((item) => item.month)));
+  const successfulImportRows = result?.results.filter((row) => row.action !== "skipped") ?? [];
 
   return (
     <div className="space-y-6 p-6">
@@ -829,42 +863,117 @@ export default function ImportWizard({
           )}
 
           {importedBudgetTotals.brands.length > 0 && (
-            <div className="mt-4 space-y-3">
-              {importedBudgetTotals.brands.map((brandTotal) => {
-                const level1Total = brandTotal.level1.reduce((sum, item) => sum + item.amount, 0);
-                const level2Total = brandTotal.level2.reduce((sum, item) => sum + item.amount, 0);
-                const level3Total = brandTotal.level3.reduce((sum, item) => sum + item.amount, 0);
-                const level1MatchesLevel2 = level1Total === level2Total;
-                const level2MatchesLevel3 = level3Total === 0 || level2Total === level3Total;
-                return (
-                  <div key={brandTotal.brand} className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-200">
-                      <span>Brand: {brandTotal.brand}</span>
-                      <span>Tổng cấp 1: {level1Total.toLocaleString("vi-VN")}</span>
-                    </div>
-                    <div className="mt-2 text-xs text-slate-400">
-                      Đối soát ngân sách: Cấp 1 = Cấp 2 {level1MatchesLevel2 ? "✓" : "⚠"}
-                      {level3Total > 0 && ` · Cấp 2 = Cấp 3 ${level2MatchesLevel3 ? "✓" : "⚠"}`}
-                    </div>
-                    <div className="mt-2 grid grid-cols-1 gap-3 text-xs lg:grid-cols-3">
-                      {[
-                        { title: "Mã cấp 1 / mã cha", items: brandTotal.level1, total: level1Total },
-                        { title: "Mã cấp 2", items: brandTotal.level2, total: level2Total },
-                        { title: "Mã cấp 3", items: brandTotal.level3, total: level3Total },
-                      ].map((group) => (
-                        <div key={group.title}>
-                          <div className="text-slate-400">{group.title}: <span className="text-slate-200">{group.total.toLocaleString("vi-VN")}</span></div>
-                          {group.items.map((item) => (
-                            <div key={item.code} className="mt-1 flex justify-between gap-3 text-slate-400">
-                              <span>{item.code}</span><span className="text-slate-200">{item.amount.toLocaleString("vi-VN")}</span>
-                            </div>
-                          ))}
-                        </div>
+            <div className="mt-6 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-white">Bảng tổng hợp ngân sách đã import</h3>
+                <p className="mt-1 text-sm text-slate-400">Số tiền riêng từng tháng · Đơn vị: VNĐ · Chỉ gồm các dòng import thành công.</p>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-slate-700">
+                <table className="w-full min-w-[1000px] text-sm">
+                  <caption className="sr-only">Tổng hợp ngân sách theo tháng, Brand và quý</caption>
+                  <thead className="bg-slate-800 text-slate-300">
+                    <tr>
+                      {['Tháng', 'Brand', 'Quý', 'Tổng Ngân sách / Cấp 1', 'Cấp 2', 'Cấp 3', 'Mã ngân sách duy nhất (VNĐ)', 'Các mã đã import (VNĐ)', 'Đối soát'].map((label, index) => (
+                        <th key={label} scope="col" className={index >= 3 && index <= 6 ? 'px-4 py-3 text-right font-medium' : 'px-4 py-3 text-left font-medium'}>{label}</th>
                       ))}
-                    </div>
-                  </div>
-                );
-              })}
+                    </tr>
+                  </thead>
+                  {importedMonths.map((month) => {
+                    const brands = importedBudgetTotals.brands.filter((item) => item.month === month);
+                    const totals = ['level1', 'level2', 'level3'].map((level) => brands.reduce((sum, brand) => sum + brand[level as 'level1' | 'level2' | 'level3'].reduce((amount, item) => amount + item.amount, 0), 0));
+                    return (
+                      <tbody key={month} className="divide-y divide-slate-800 border-t border-slate-700">
+                        {brands.map((brand, index) => {
+                          const amounts = [brand.level1, brand.level2, brand.level3].map((items) => items.reduce((sum, item) => sum + item.amount, 0));
+                          const matches = amounts[0] === amounts[1] && (brand.level3.length === 0 || amounts[1] === amounts[2]);
+                          return (
+                            <tr key={JSON.stringify([brand.brand, brand.quarter])} className="bg-slate-900/40 hover:bg-slate-800/70">
+                              {index === 0 && <th scope="rowgroup" rowSpan={brands.length} className="border-r border-slate-700 px-4 py-3 text-left align-top font-semibold text-blue-300">{month}</th>}
+                              <th scope="row" className="px-4 py-3 text-left font-medium text-white">{brand.brand}</th>
+                              <td className="whitespace-nowrap px-4 py-3 text-slate-400">{brand.quarter || '—'}</td>
+                              {amounts.map((amount, level) => <td key={level} className={level === 0 ? 'whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-white' : 'whitespace-nowrap px-4 py-3 text-right tabular-nums text-slate-300'}>{level === 2 && brand.level3.length === 0 ? '—' : amount.toLocaleString('vi-VN')}</td>)}
+                              <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">
+                                {brand.leafCodes.length > 0 ? <div className="space-y-1.5">{brand.leafCodes.map((item) => <div key={item.code} title={item.code} aria-label={`${item.code}: ${item.amount.toLocaleString('vi-VN')} VNĐ`}>{item.amount.toLocaleString('vi-VN')}</div>)}</div> : <span className="text-slate-500">—</span>}
+                              </td>
+                              <td className="min-w-[280px] px-4 py-3 align-top">
+                                <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900/50">
+                                  <div className="sticky top-0 flex justify-between gap-4 bg-slate-800 px-3 py-2 text-xs text-slate-400"><span>Mã ngân sách</span><span>Số tiền import</span></div>
+                                  <dl className="divide-y divide-slate-800">{brand.importedCodes.map((item) => (
+                                    <div key={item.code} className="flex items-start justify-between gap-4 px-3 py-2 text-xs hover:bg-slate-800/60">
+                                      <dt className="break-words font-medium text-blue-200">{item.code}</dt>
+                                      <dd className="whitespace-nowrap text-right tabular-nums text-white">{item.amount.toLocaleString('vi-VN')}</dd>
+                                    </div>
+                                  ))}</dl>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3"><span className={matches ? 'whitespace-nowrap rounded-md bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300' : 'whitespace-nowrap rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-300'}>{matches ? '✓ Khớp' : '⚠ Chênh lệch'}</span></td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="bg-blue-500/10 font-semibold text-blue-200">
+                          <th scope="row" colSpan={3} className="px-4 py-3 text-left">Tổng {month}</th>
+                          {totals.map((amount, index) => <td key={index} className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{index === 2 && brands.every((brand) => brand.level3.length === 0) ? '—' : amount.toLocaleString('vi-VN')}</td>)}
+                          <td />
+                          <td />
+                          <td />
+                        </tr>
+                      </tbody>
+                    );
+                  })}
+                  <tfoot className="border-t-2 border-slate-600 bg-slate-800 font-semibold text-white">
+                    <tr>
+                      <th scope="row" colSpan={3} className="px-4 py-4 text-left">Tổng các tháng đã import</th>
+                      {(['level1', 'level2', 'level3'] as const).map((level) => <td key={level} className="whitespace-nowrap px-4 py-4 text-right tabular-nums">{level === 'level3' && importedBudgetTotals.brands.every((brand) => brand.level3.length === 0) ? '—' : importedBudgetTotals.brands.reduce((sum, brand) => sum + brand[level].reduce((amount, item) => amount + item.amount, 0), 0).toLocaleString('vi-VN')}</td>)}
+                      <td />
+                      <td />
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="text-xs text-slate-400">Ngân sách lấy theo tổng cấp 1; các cấp là cùng ngân sách để đối soát, không cộng với nhau. Dấu — nghĩa là không có mã cấp 3.</p>
+              <p className="text-xs text-slate-400">Mã ngân sách duy nhất chỉ gồm mã cấp 0 đã import không có mã con trong cùng Brand, quý và tháng. Mã con cuối nhánh không được tính vào cột này.</p>
+              <details className="rounded-xl border border-slate-700 bg-slate-900/30">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-blue-300 focus-visible:outline focus-visible:outline-2">Kiểm tra mã đã import ({successfulImportRows.length} dòng thành công)</summary>
+                <div className="max-h-[360px] overflow-auto border-t border-slate-700">
+                  <table className="w-full min-w-[780px] text-sm">
+                    <caption className="sr-only">Mã và số tiền thực tế của từng dòng import thành công, đơn vị VNĐ</caption>
+                    <thead className="sticky top-0 bg-slate-800 text-slate-300"><tr>{['Sheet', 'Tháng', 'Brand', 'Quý', 'Mã ngân sách', 'Số tiền (VNĐ)', 'Kết quả'].map((label, index) => <th key={label} scope="col" className={index === 5 ? 'px-4 py-3 text-right font-medium' : 'px-4 py-3 text-left font-medium'}>{label}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-800">{successfulImportRows.map((row, index) => (
+                      <tr key={index} className="hover:bg-slate-800/70">
+                        <td className="px-4 py-2.5 text-slate-400">{row.sheetName}</td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-slate-300">{row.thang}</td>
+                        <td className="px-4 py-2.5 text-slate-300">{row.brand}</td>
+                        <td className="px-4 py-2.5 text-slate-400">{row.quarter}</td>
+                        <th scope="row" className="px-4 py-2.5 text-left font-medium text-white">{row.maNganSach}</th>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-white">{row.soTien.toLocaleString('vi-VN')}</td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-xs text-emerald-300">{row.action === 'created' ? 'Đã tạo mới' : 'Đã cập nhật'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </details>
+              <details className="rounded-xl border border-slate-700 bg-slate-900/30">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-blue-300 outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400">Xem bảng chi tiết mã ngân sách</summary>
+                <div className="max-h-[560px] overflow-auto border-t border-slate-700">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <caption className="sr-only">Chi tiết mã ngân sách theo từng tháng và Brand, đơn vị VNĐ</caption>
+                    <thead className="sticky top-0 bg-slate-800 text-slate-300"><tr>{['Tháng', 'Brand', 'Quý', 'Cấp', 'Mã ngân sách', 'Số tiền'].map((label, index) => <th key={label} scope="col" className={index === 5 ? 'px-4 py-3 text-right font-medium' : 'px-4 py-3 text-left font-medium'}>{label}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {importedBudgetTotals.brands.flatMap((brand) => [brand.level1, brand.level2, brand.level3].flatMap((items, level) => items.map((item) => (
+                        <tr key={JSON.stringify([brand.month, brand.brand, brand.quarter, level, item.code])} className="hover:bg-slate-800/70">
+                          <td className="whitespace-nowrap px-4 py-2.5 text-slate-400">{brand.month}</td>
+                          <td className="px-4 py-2.5 text-slate-200">{brand.brand}</td>
+                          <td className="px-4 py-2.5 text-slate-400">{brand.quarter || '—'}</td>
+                          <td className="px-4 py-2.5 text-slate-400">{level + 1}</td>
+                          <th scope="row" className="px-4 py-2.5 text-left font-medium text-slate-200">{item.code}</th>
+                          <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-white">{item.amount.toLocaleString('vi-VN')}</td>
+                        </tr>
+                      ))))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </div>
           )}
 

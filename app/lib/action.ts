@@ -3467,6 +3467,14 @@ export interface SheetsAndMonthsPreview {
   recordEstimate: number;
 }
 
+function getVisibleSheetNames(workbook: XLSX.WorkBook): string[] {
+  return workbook.SheetNames.filter((name, index) => {
+    const metadata = workbook.Workbook?.Sheets;
+    const sheetMetadata = metadata?.find((sheet) => sheet.name === name) ?? metadata?.[index];
+    return (sheetMetadata?.Hidden ?? 0) === 0;
+  });
+}
+
 /** Đọc nhanh file Excel, liệt kê tên các sheet và các nhãn "Tháng X" tìm thấy trong từng sheet.
  * Dùng để UI hiển thị checkbox và nhãn tháng theo từng sheet riêng trước khi import thật sự.
  * Không ghi gì vào Lark Base ở bước này. */
@@ -3477,12 +3485,13 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
+    const visibleSheetNames = getVisibleSheetNames(workbook);
 
     const monthSet = new Set<string>();
     const sheetMonths: Record<string, string[]> = {};
     let recordEstimate = 0;
 
-    for (const sheetName of workbook.SheetNames) {
+    for (const sheetName of visibleSheetNames) {
       const sheet = workbook.Sheets[sheetName];
       const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
       const perSheetMonthSet = new Set<string>();
@@ -3536,7 +3545,7 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
       return na - nb;
     });
 
-    return { success: true, data: { sheets: workbook.SheetNames, months, sheetMonths, recordEstimate } };
+    return { success: true, data: { sheets: visibleSheetNames, months, sheetMonths, recordEstimate } };
   } catch (err: any) {
     return { success: false, message: err.message || "Không đọc được file Excel." };
   }
@@ -3760,8 +3769,9 @@ export async function importTgdBudgetExcelAction(
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sourceBudgetCodesBySheet = new Map<string, Set<string>>();
+    const visibleSheetNames = getVisibleSheetNames(workbook);
     const sourceBudgetCodesWithAmountBySheetAndMonth = new Map<string, Map<string, Set<string>>>();
-    for (const sheetName of workbook.SheetNames) {
+    for (const sheetName of visibleSheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue;
       const sourceBudgetCodes = sourceBudgetCodesBySheet.get(sheetName) ?? new Set<string>();
       const sourceBudgetCodesWithAmountByMonth =
@@ -3867,7 +3877,7 @@ export async function importTgdBudgetExcelAction(
     let updated = 0;
     let skipped = 0;
 
-    for (const sheetName of workbook.SheetNames) {
+    for (const sheetName of visibleSheetNames) {
       if (selectedSheets && !selectedSheets.includes(sheetName)) continue; // sheet không được chọn -> bỏ qua
 
       const sourceBudgetCodes = sourceBudgetCodesBySheet.get(sheetName) ?? new Set<string>();

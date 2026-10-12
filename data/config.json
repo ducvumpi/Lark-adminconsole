@@ -11,11 +11,6 @@
       "apiBaseUrl": "https://open.larksuite.com/open-apis",
       "tables": [
         {
-          "id": "table-1786332478231-lpw3",
-          "name": "A03. Ngân sách TGĐ duyệt",
-          "tableId": "tblG7IHh0GAkMmsD"
-        },
-        {
           "id": "table-1786332662504-7hmk",
           "name": "Tester A02. Ngân sách dự chi",
           "tableId": "tblD0d0Ug6In1PE9"
