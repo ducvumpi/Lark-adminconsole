@@ -185,6 +185,7 @@ type FileSelectionState = {
   preview: SheetsAndMonthsPreview;
   selectedSheets: Set<string>;
   selectedMonths: Set<string>;
+  selectedCategories: Set<string>;
   loaiNganSach: string;
   loaiDeXuat: string;
   lanDeXuat: string; // 👈 thêm dòng này
@@ -303,6 +304,7 @@ export default function ImportWizard({
           preview: res.data!,
           selectedSheets: new Set(res.data!.sheets),
           selectedMonths: new Set(res.data!.months),
+          selectedCategories: new Set(res.data!.categories),
           loaiNganSach: LOAI_NGAN_SACH_OPTIONS[0],
           loaiDeXuat: LOAI_DE_XUAT_OPTIONS[0],
           lanDeXuat: LAN_DE_XUAT_OPTIONS[0], // 👈 thêm dòng này
@@ -346,10 +348,11 @@ export default function ImportWizard({
     );
   }
 
-  function updateSelection(fileName: string, type: "sheets" | "months", nextValue: Set<string>) {
+  function updateSelection(fileName: string, type: "sheets" | "months" | "categories", nextValue: Set<string>) {
     setFileSelections((prev) =>
       prev.map((item) => {
         if (item.file.name !== fileName) return item;
+        if (type === "categories") return { ...item, selectedCategories: nextValue };
         return type === "sheets" ? { ...item, selectedSheets: nextValue } : { ...item, selectedMonths: nextValue };
       })
     );
@@ -380,9 +383,9 @@ export default function ImportWizard({
       return;
     }
 
-    const invalidFile = fileSelections.find((item) => item.selectedSheets.size === 0 || item.selectedMonths.size === 0);
+    const invalidFile = fileSelections.find((item) => item.selectedSheets.size === 0 || item.selectedMonths.size === 0 || item.selectedCategories.size === 0);
     if (invalidFile) {
-      setError(`File ${invalidFile.file.name} chưa chọn đủ sheet hoặc tháng để import.`);
+      setError(`File ${invalidFile.file.name} chưa chọn đủ sheet, tháng hoặc hạng mục để import.`);
       return;
     }
 
@@ -453,6 +456,7 @@ export default function ImportWizard({
         fd.append("lanDeXuat", item.lanDeXuat); // 👈 thêm dòng này
         fd.append("selectedSheets", JSON.stringify(Array.from(item.selectedSheets)));
         fd.append("selectedMonths", JSON.stringify(Array.from(item.selectedMonths)));
+        fd.append("selectedCategories", JSON.stringify(Array.from(item.selectedCategories)));
 
         const res = await importTgdBudgetExcelAction(fd);
         if (!res.success) {
@@ -749,7 +753,34 @@ export default function ImportWizard({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-400">Hạng mục ({item.selectedCategories.size}/{item.preview.categories.length})</span>
+                      <div className="flex gap-2 text-xs">
+                        <button className="text-blue-400 hover:underline" onClick={() => updateSelection(item.file.name, "categories", new Set(item.preview.categories))}>Chọn tất cả</button>
+                        <button className="text-slate-500 hover:underline" onClick={() => updateSelection(item.file.name, "categories", new Set())}>Bỏ chọn hết</button>
+                      </div>
+                    </div>
+                    <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-700 p-3">
+                      {item.preview.categories.length === 0 ? (
+                        <p className="text-sm text-slate-500">Không tìm thấy hạng mục có mã ngân sách trong file.</p>
+                      ) : item.preview.categories.map((category) => (
+                        <label key={category} className="flex cursor-pointer items-center gap-2 text-sm text-slate-200">
+                          <input type="checkbox" checked={item.selectedCategories.has(category)} onChange={() => {
+                            setFileSelections((prev) => prev.map((selection) => {
+                              if (selection.file.name !== item.file.name) return selection;
+                              const next = new Set(selection.selectedCategories);
+                              if (next.has(category)) next.delete(category);
+                              else next.add(category);
+                              return { ...selection, selectedCategories: next };
+                            }));
+                          }} />
+                          {category || "(Hạng mục trống)"}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-400">Sheet</span>
@@ -834,7 +865,7 @@ export default function ImportWizard({
             <button
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
               onClick={handleImport}
-              disabled={loading || fileSelections.some((item) => item.selectedSheets.size === 0 || item.selectedMonths.size === 0)}
+              disabled={loading || fileSelections.some((item) => item.selectedSheets.size === 0 || item.selectedMonths.size === 0 || item.selectedCategories.size === 0)}
             >
               {loading ? "Đang import..." : `Import ${selectedFiles.length} file vào Base`}
             </button>

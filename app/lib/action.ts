@@ -3462,6 +3462,7 @@ function buildFieldsBySmartType(
 
 export interface SheetsAndMonthsPreview {
   sheets: string[];
+  categories: string[];
   months: string[]; // vd ["Tháng 7", "Tháng 8", "Tháng 9"], đã sắp theo số tháng tăng dần
   sheetMonths: Record<string, string[]>;
   recordEstimate: number;
@@ -3488,6 +3489,7 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
     const visibleSheetNames = getVisibleSheetNames(workbook);
 
     const monthSet = new Set<string>();
+    const categorySet = new Set<string>();
     const sheetMonths: Record<string, string[]> = {};
     let recordEstimate = 0;
 
@@ -3528,12 +3530,13 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
           .filter((row) => row > headerSection.row)
           .sort((a, b) => a - b)[0];
         const dataEndRow = nextSectionRow !== undefined ? nextSectionRow - 1 : range.e.r;
-        for (let row = headerSection.row + 2; row <= dataEndRow; row++) {
+        for (let row = headerSection.row + 1; row <= dataEndRow; row++) {
           const maNganSach = normalizeImportedBudgetCode(
             String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
           );
           if (maNganSach) {
-            recordEstimate++;
+            categorySet.add(String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim());
+            if (row >= headerSection.row + 2) recordEstimate++;
           }
         }
       }
@@ -3545,7 +3548,7 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
       return na - nb;
     });
 
-    return { success: true, data: { sheets: visibleSheetNames, months, sheetMonths, recordEstimate } };
+    return { success: true, data: { sheets: visibleSheetNames, months, sheetMonths, categories: Array.from(categorySet).sort((a, b) => a.localeCompare(b, "vi")), recordEstimate } };
   } catch (err: any) {
     return { success: false, message: err.message || "Không đọc được file Excel." };
   }
@@ -3763,6 +3766,16 @@ export async function importTgdBudgetExcelAction(
     // Nếu không truyền (undefined) -> import TẤT CẢ sheet/tháng, giữ tương thích ngược.
     const selectedSheetsRaw = formData.get("selectedSheets");
     const selectedMonthsRaw = formData.get("selectedMonths");
+    const selectedCategoriesRaw = formData.get("selectedCategories");
+    let selectedCategories: Set<string> | null = null;
+    if (selectedCategoriesRaw !== null) {
+      const values: unknown = JSON.parse(String(selectedCategoriesRaw));
+      if (!Array.isArray(values) || !values.every((value) => typeof value === "string")) {
+        return { success: false, message: "Danh sách hạng mục không hợp lệ." };
+      }
+      if (values.length === 0) return { success: false, message: "Vui lòng chọn ít nhất một hạng mục để import." };
+      selectedCategories = new Set(values.map((value: string) => value.trim()));
+    }
     const selectedSheets: string[] | null = selectedSheetsRaw ? JSON.parse(String(selectedSheetsRaw)) : null;
     const selectedMonths: string[] | null = selectedMonthsRaw ? JSON.parse(String(selectedMonthsRaw)) : null;
 
@@ -4028,6 +4041,7 @@ export async function importTgdBudgetExcelAction(
             );
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
+            if (selectedCategories && !selectedCategories.has(hangMuc)) continue;
 
             for (const { label: thangLabel, col: monthCol } of monthCols) {
               const rawAmount = getDirectCellValueXLSX(sheet, row, monthCol);
@@ -4233,6 +4247,7 @@ export async function importTgdBudgetExcelAction(
             );
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
+            if (selectedCategories && !selectedCategories.has(hangMuc)) continue;
             const khoanNganSach =
               khoanNganSachColIdx >= 0 ? String(getMergedCellValueXLSX(sheet, row, khoanNganSachColIdx) ?? "").trim() : "";
 
