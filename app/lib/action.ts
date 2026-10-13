@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import fs from "fs/promises";
 import path from "path";
 import { SESSION_COOKIE, getExpectedSessionValue } from "./auth";
+import { getRootOnlyImportCode } from "./budget-codes";
 import { getLarkClient, LarkField, LarkRecord } from "./lark-client";
 import {
   getConfig,
@@ -3255,6 +3256,21 @@ function findNextBlockColBoundary(
   }
   return best;
 }
+
+/** Exclusive end of an approval block; never include its neighbour's columns. */
+function getTgdBlockEndCol(
+  allBlocks: { row: number; col: number; colEnd: number; titleText: string }[],
+  block: { row: number; col: number; colEnd: number },
+  sheetEndCol: number,
+  fallbackWidth?: number
+): number {
+  const nextBlock = findNextBlockColBoundary(allBlocks, block);
+  return Math.min(
+    sheetEndCol,
+    nextBlock ?? sheetEndCol,
+    block.colEnd > block.col + 1 ? block.colEnd : fallbackWidth ? block.col + fallbackWidth : sheetEndCol
+  );
+}
 /** Quét các cột Brand nằm bên phải cột "Hạng mục"/"Mã ngân sách" trên CHÍNH header row
  * (không có subheader riêng như layout Tháng-theo-cột). Dừng khi gặp 3 ô trống liên tiếp
  * hoặc gặp "Note". Bỏ qua nếu lỡ là cột "Tháng X" (tránh nhầm với layout cũ). */
@@ -3569,11 +3585,17 @@ export interface TgdImportRowResult {
 function normalizeImportedBudgetCode(
   code: string,
   sourceCodes?: Set<string>,
-  sourceCodesWithAmount?: Set<string>
+  sourceCodesWithAmount?: Set<string>,
+  hasChildBudgetCodes = true
 ): string {
   const normalized = normalizeBudgetCodeForComparison(code);
   const parts = normalized.split("-").filter(Boolean);
   if (parts.length === 0) return "";
+
+  if (!hasChildBudgetCodes) {
+    // Root-only files must not import detail rows or suppress a funded root.
+    return parts.length === 1 ? getRootOnlyImportCode(normalized) : "";
+  }
 
   if (sourceCodes && parts.length === 1) {
     const hasLevel3Child = hasImportedBudgetLevel3Child(normalized, sourceCodes);
@@ -3762,6 +3784,11 @@ export async function importTgdBudgetExcelAction(
     const isTradeBudget = loaiNganSach.trim() === "Ngân sách Trade";
     const loaiDeXuat = String(formData.get("loaiDeXuat") || "");
     const lanDeXuat = String(formData.get("lanDeXuat") || ""); // 👈 thêm dòng này
+    const hasChildBudgetCodesRaw = formData.get("hasChildBudgetCodes");
+    if (hasChildBudgetCodesRaw !== null && hasChildBudgetCodesRaw !== "true" && hasChildBudgetCodesRaw !== "false") {
+      return { success: false, message: "Lựa chọn mã ngân sách con không hợp lệ." };
+    }
+    const hasChildBudgetCodes = hasChildBudgetCodesRaw !== "false";
     // Danh sách sheet/tháng người dùng chọn để import (JSON string array).
     // Nếu không truyền (undefined) -> import TẤT CẢ sheet/tháng, giữ tương thích ngược.
     const selectedSheetsRaw = formData.get("selectedSheets");
@@ -3809,7 +3836,8 @@ export async function importTgdBudgetExcelAction(
 
           const subHeaderRow = headerSection.row + 1;
           let hasMonthColumns = false;
-          for (let col = block.col; col < block.col + 8; col++) {
+          const monthScanEndCol = getTgdBlockEndCol(tgdBlocks, block, range.e.c + 1, 8);
+          for (let col = block.col; col < monthScanEndCol; col++) {
             const value = String(getMergedCellValueXLSX(sheet, subHeaderRow, col) ?? "").trim();
             if (/^tháng\s*\d+$/i.test(value)) {
               hasMonthColumns = true;
@@ -3823,7 +3851,7 @@ export async function importTgdBudgetExcelAction(
           }
 
           if (!hasMonthColumns) {
-            const blockEnd = block.colEnd > block.col + 1 ? block.colEnd : range.e.c + 1;
+            const blockEnd = getTgdBlockEndCol(tgdBlocks, block, range.e.c + 1);
             for (const candidateRow of [headerSection.row, block.row + 1, block.row + 2, subHeaderRow]) {
               for (const brandColumn of findBrandColumnsXLSX(sheet, candidateRow, block.col, blockEnd)) {
                 amountColumns.add(brandColumn.col);
@@ -3886,6 +3914,7 @@ export async function importTgdBudgetExcelAction(
     const results: TgdImportRowResult[] = [];
     const debug: SheetDebugInfo[] = [];
     const syntheticRecordTotals = new Map<string, { recordId: string; total: number }>();
+    const processedSourceCells = new Set<string>();
     let created = 0;
     let updated = 0;
     let skipped = 0;
@@ -3966,12 +3995,13 @@ export async function importTgdBudgetExcelAction(
         }
 
         const subHeaderRow = headerSection.row + 1;
+        const monthScanEndCol = getTgdBlockEndCol(tgdBlocks, block, maxCol + 1, 8);
 
         // Kiểm tra subHeaderRow có phải dòng "Tháng X" không -> quyết định layout.
         // Layout cũ: subHeaderRow chứa các ô "Tháng X" (Brand cố định, Tháng theo cột).
         // Layout mới: subHeaderRow KHÔNG chứa "Tháng X" -> Brand theo cột, 1 khối = 1 tháng lấy từ tiêu đề.
         let subHeaderHasMonthCols = false;
-        for (let col = block.col; col < block.col + 8; col++) {
+        for (let col = block.col; col < monthScanEndCol; col++) {
           const val = normalizeText(getMergedCellValueXLSX(sheet, subHeaderRow, col));
           if (/^tháng\s*\d+$/.test(val)) {
             subHeaderHasMonthCols = true;
@@ -4007,7 +4037,7 @@ export async function importTgdBudgetExcelAction(
 
           const monthCols: { label: string; col: number }[] = [];
           let sawAnyMonth = false;
-          for (let col = block.col; col < block.col + 8; col++) {
+          for (let col = block.col; col < monthScanEndCol; col++) {
             const val = String(getMergedCellValueXLSX(sheet, subHeaderRow, col) ?? "").trim();
             if (/^tháng\s*\d+$/i.test(val)) {
               sawAnyMonth = true;
@@ -4050,7 +4080,8 @@ export async function importTgdBudgetExcelAction(
               const maNganSach = normalizeImportedBudgetCode(
                 sourceCode,
                 sourceBudgetCodes,
-                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(thangLabel))
+                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(thangLabel)),
+                hasChildBudgetCodes
               );
               if (!maNganSach) continue;
 
@@ -4060,6 +4091,10 @@ export async function importTgdBudgetExcelAction(
                 isSyntheticCode &&
                 !getImportedBudgetCodePath(syntheticSourceCode).includes(sourceCode)
               ) continue;
+
+              const sourceCellKey = JSON.stringify([sheetName, row, monthCol]);
+              if (processedSourceCells.has(sourceCellKey)) continue;
+              processedSourceCells.add(sourceCellKey);
 
               const syntheticKey = maNganSach !== sourceCode
                 ? JSON.stringify([brand, quarterRaw, nam, thangLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat])
@@ -4167,13 +4202,7 @@ export async function importTgdBudgetExcelAction(
           // Chặn cứng vùng quét Brand tại đúng cột bắt đầu của khối TGĐ kế tiếp (nếu có) —
           // tránh lấn sang Brand/NOTE của tháng sau khi 2 khối nằm liền kề, không đủ ô trống
           // để heuristic "3 ô trống liên tiếp" nhận biết điểm dừng.
-          const nextBlockColBoundary = findNextBlockColBoundary(tgdBlocks, block);
-          const brandScanEndCol =
-            block.colEnd > block.col + 1
-              ? block.colEnd
-              : nextBlockColBoundary !== null
-                ? nextBlockColBoundary
-                : maxCol + 1;
+          const brandScanEndCol = getTgdBlockEndCol(tgdBlocks, block, maxCol + 1);
 
           const dataStartRow = headerSection.row + 1;
           const nextSectionRow = headerSections
@@ -4258,7 +4287,8 @@ export async function importTgdBudgetExcelAction(
               const maNganSach = normalizeImportedBudgetCode(
                 sourceCode,
                 sourceBudgetCodes,
-                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(monthLabel))
+                sourceBudgetCodesWithAmountByMonth.get(getImportMonthKey(monthLabel)),
+                hasChildBudgetCodes
               );
               if (!maNganSach) continue;
 
@@ -4268,6 +4298,10 @@ export async function importTgdBudgetExcelAction(
                 isSyntheticCode &&
                 !getImportedBudgetCodePath(syntheticSourceCode).includes(sourceCode)
               ) continue;
+
+              const sourceCellKey = JSON.stringify([sheetName, row, brandCol.col]);
+              if (processedSourceCells.has(sourceCellKey)) continue;
+              processedSourceCells.add(sourceCellKey);
 
               const effectiveBrand = isTradeBudget ? "N/A" : brandCol.name;
               const syntheticKey = maNganSach !== sourceCode

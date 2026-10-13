@@ -15,6 +15,7 @@ import SuspiciousSourceRecordsPanel from "./SuspiciousSourceRecordsPanel";
 import BudgetLevelViolationPanel from "@/app/components/BudgetLevelViolationPanel";
 import BudgetHierarchyAuditPanel from "@/app/components/BudgetHierarchyAuditPanel";
 import ImportInvitationImagesPanel from "@/app/components/ImportInvitationImagesPanel";
+import BudgetCodeCatalog from "@/app/components/BudgetCodeCatalog";
 const FIELD_TYPE_LABEL: Record<string, string> = {
     1: "Single Select",
     2: "Multi Select",
@@ -37,7 +38,7 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
     19: "Auto Number",
 };
 
-type TabKey = "overview" | "fields" | "records" | "import" | "tiktok" | "cleanup" | "audit" | "settings";
+type TabKey = "overview" | "fields" | "records" | "import" | "tiktok" | "cleanup" | "audit" | "budget-codes" | "settings";
 type RecordsListResult = {
     items: LarkRecord[];
     hasMore: boolean;
@@ -106,6 +107,7 @@ export default function SpaDashboard({
         { key: "tiktok", label: "TikTok", icon: "🎵" },
         { key: "cleanup", label: "Dọn dữ liệu", icon: "🧹" },
         { key: "audit", label: "Kiểm tra ngân sách", icon: "🔎" },
+        { key: "budget-codes", label: "Mã ngân sách", icon: "📚" },
         { key: "settings", label: "Cài đặt", icon: "⚙️" },
     ];
 
@@ -153,6 +155,8 @@ export default function SpaDashboard({
                     </div>
                     <div className="header-badge">SPA</div>
                 </header>
+
+                {activeTab === "budget-codes" && <BudgetCodeCatalog />}
 
                 {activeTab === "overview" && (
                     <section className="panel">

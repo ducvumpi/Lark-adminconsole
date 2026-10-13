@@ -192,6 +192,7 @@ type FileSelectionState = {
   stopRequested: boolean;
   status: "pending" | "running" | "done" | "stopped";
   recordEstimate: number;
+  hasChildBudgetCodes: boolean;
 };
 
 export default function ImportWizard({
@@ -311,6 +312,7 @@ export default function ImportWizard({
           stopRequested: false,
           status: "pending",
           recordEstimate: res.data!.recordEstimate,
+          hasChildBudgetCodes: true,
         });
       }
 
@@ -457,6 +459,7 @@ export default function ImportWizard({
         fd.append("selectedSheets", JSON.stringify(Array.from(item.selectedSheets)));
         fd.append("selectedMonths", JSON.stringify(Array.from(item.selectedMonths)));
         fd.append("selectedCategories", JSON.stringify(Array.from(item.selectedCategories)));
+        fd.append("hasChildBudgetCodes", String(item.hasChildBudgetCodes));
 
         const res = await importTgdBudgetExcelAction(fd);
         if (!res.success) {
@@ -713,6 +716,27 @@ export default function ImportWizard({
                     </button>
                   </div>
                 </div>
+
+                <label className="mb-4 flex items-start gap-3 rounded-lg border border-slate-700 p-3 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={item.hasChildBudgetCodes}
+                    disabled={loading}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setFileSelections((previous) => previous.map((entry) =>
+                        entry.file.name === item.file.name ? { ...entry, hasChildBudgetCodes: checked } : entry
+                      ));
+                    }}
+                  />
+                  <span>
+                    File có mã ngân sách con
+                    <span className="mt-1 block text-xs text-slate-400">
+                      Tích chọn: import theo logic hiện tại. Bỏ chọn: file chỉ xin mã cấp 1; mã có con trong danh mục sẽ thêm -00-00, mã duy nhất giữ nguyên.
+                    </span>
+                  </span>
+                </label>
 
                 <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
