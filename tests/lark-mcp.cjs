@@ -130,6 +130,17 @@ async function main() {
   const beforeNotification = reads;
   await post({ jsonrpc: "2.0", method: "tools/call", params: { name: "query_base", arguments: { action: "count" } } });
   assert.equal(reads, beforeNotification);
+  fields.push({ field_name: "Quý công thức", type: 20 }, { field_name: "Tổng công thức", type: 20 });
+  rows.forEach((row, index) => {
+    row.fields["Quý công thức"] = { type: 1, value: [index === 1 ? "Q3/2026" : "Q4/2026"] };
+    row.fields["Tổng công thức"] = { type: 2, value: [row.fields["Số tiền TGĐ duyệt"]] };
+  });
+  const formula = resultText(await call("query_base", {
+    action: "sum", sumField: "Tổng công thức",
+    filters: [{ field: "Quý công thức", operator: "equals", value: "Q4/2026" }],
+  }));
+  assert.equal(formula.sum, 300);
+  assert.equal(formula.count, 2);
   transportError = true;
   const failure = await call("list_base_fields", {});
   assert.equal(failure.result.isError, true);

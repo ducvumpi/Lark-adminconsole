@@ -68,6 +68,33 @@ async function main() {
     { action: "count", sumField: null, columns: [], filters: [{ field: "Ngày", operator: "gte", value: "1767225600000" }] });
   assert.equal(dates.count, 1);
 
+  const computedFields = [
+    { field_name: "Quý", type: 20 }, { field_name: "Tháng", type: 19 },
+    { field_name: "Tổng cha con", type: 20 },
+  ];
+  const computedRows = [
+    { record_id: "f1", fields: { Quý: "Q4/2026", Tháng: [{ text: "Tháng 10" }], "Tổng cha con": { type: 2, value: [100] } } },
+    { record_id: "f2", fields: { Quý: { type: 1, value: ["Q4/2026"] }, Tháng: ["Tháng 10"], "Tổng cha con": 200 } },
+    { record_id: "f3", fields: { Quý: "Q4/2026", Tháng: "Tháng 10", "Tổng cha con": [] } },
+    { record_id: "f4", fields: { Quý: "Q3/2026", Tháng: "Tháng 7", "Tổng cha con": 900 } },
+  ];
+  const formulaQuery = { action: "sum", sumField: "Tổng cha con", columns: [], filters: [
+    { field: "Quý", operator: "equals", value: "Q4/2026" }, { field: "Tháng", operator: "contains", value: "10" },
+  ] };
+  const computed = await queryBase(reader([{ items: computedRows, hasMore: false }]), computedFields, formulaQuery);
+  assert.equal(computed.sum, 300);
+  assert.equal(computed.emptyCount, 1);
+  assert.equal(computed.count, 3);
+  const computedRange = await queryBase(reader([{ items: computedRows, hasMore: false }]), computedFields, {
+    action: "count", sumField: null, columns: [], filters: [{ field: "Tổng cha con", operator: "gt", value: "150" }],
+  });
+  assert.equal(computedRange.count, 2);
+  await assert.rejects(queryBase(reader([{ items: [{ record_id: "multi", fields: { "Tổng cha con": [100, 200] } }], hasMore: false }]),
+    computedFields, { ...formulaQuery, filters: [] }), /nhiều giá trị/);
+  await assert.rejects(queryBase(reader([{ items: [{ record_id: "text", fields: { "Tổng cha con": "chưa duyệt" } }], hasMore: false }]),
+    computedFields, { ...formulaQuery, filters: [] }), /Tổng cha con.*không phải số/);
+  await assert.rejects(queryBase(reader([]), fields, { ...sumQuery, filters: [{ field: "Năm", operator: "equals", value: "năm 2026" }] }), /Năm.*lỗi bộ lọc/);
+
   const env = { OPENAI_API_KEY: "fake-key-for-offline-test", OPENAI_MODEL: "test-model" };
   const { answerWithOpenAI } = load("app/lib/lark-openai.ts", {
     process: { env }, console: { error() {} },

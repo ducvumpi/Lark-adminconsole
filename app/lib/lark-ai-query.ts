@@ -28,7 +28,25 @@ function numeric(value: unknown): number | null {
 }
 
 const NUMERIC_TYPES = [2, 19, 20];
+const COMPUTED_TYPES = [19, 20];
 const TEXT_TYPES = [1, 3, 4, 13, 15];
+
+// Formula/lookup columns can return text, numbers, or wrapped scalar values.
+// A multi-value lookup is ambiguous for aggregation: never silently add it up.
+function computedScalar(value: unknown, fieldName: string): unknown {
+  for (let depth = 0; depth < 8; depth++) {
+    if (Array.isArray(value)) {
+      if (!value.length) return null;
+      if (value.length !== 1) throw new BaseQueryError(`Cột “${fieldName}” trả nhiều giá trị lookup/công thức; chưa thể lọc hoặc tính tổng như một giá trị đơn.`);
+      value = value[0];
+    } else if (object(value)) {
+      if ("value" in value) value = value.value;
+      else if (typeof value.text === "string") value = value.text;
+      else throw new BaseQueryError(`Cột “${fieldName}” trả cấu trúc công thức/lookup chưa được hỗ trợ.`);
+    } else return value;
+  }
+  throw new BaseQueryError(`Cột “${fieldName}” có cấu trúc công thức/lookup quá sâu.`);
+}
 
 function validateQuery(input: unknown, fields: LarkField[]): Query {
   if (!object(input) || !["list", "count", "sum"].includes(String(input.action))
@@ -47,13 +65,17 @@ function validateQuery(input: unknown, fields: LarkField[]): Query {
     }
     const field = findField(filter.field);
     if (!field) throw new BaseQueryError("Không tìm thấy cột lọc.");
-    const isNumeric = NUMERIC_TYPES.includes(field.type);
+    const isNumeric = field.type === 2;
+    const isComputed = COMPUTED_TYPES.includes(field.type);
     const isDate = [5, 1002, 1004].includes(field.type);
-    if (!isNumeric && !isDate && !TEXT_TYPES.includes(field.type)) throw new BaseQueryError("Chưa hỗ trợ lọc kiểu cột này.");
+    if (!isNumeric && !isComputed && !isDate && !TEXT_TYPES.includes(field.type)) throw new BaseQueryError(`Chưa hỗ trợ lọc kiểu cột “${field.field_name}”.`);
     if ((isNumeric || isDate) && (filter.operator === "contains" || numeric(filter.value) === null)) {
-      throw new BaseQueryError("Cột số/ngày cần giá trị số; ngày dùng Unix milliseconds.");
+      throw new BaseQueryError(`Điều kiện lọc cột “${field.field_name}” cần giá trị số${isDate ? " theo Unix milliseconds" : ""}. Đây là lỗi bộ lọc, không phải lỗi hỗ trợ cột tính tổng.`);
     }
-    if (!isNumeric && !isDate && !["equals", "contains"].includes(String(filter.operator))) {
+    if (isComputed && !["equals", "contains"].includes(String(filter.operator)) && numeric(filter.value) === null) {
+      throw new BaseQueryError(`Điều kiện so sánh cột công thức/lookup “${field.field_name}” cần giá trị số; văn bản dùng equals/contains.`);
+    }
+    if (!isNumeric && !isComputed && !isDate && !["equals", "contains"].includes(String(filter.operator))) {
       throw new BaseQueryError("Cột văn bản chỉ hỗ trợ equals/contains.");
     }
   }
@@ -61,13 +83,16 @@ function validateQuery(input: unknown, fields: LarkField[]): Query {
 }
 
 function matches(record: LarkRecord, filter: Condition, field: LarkField) {
-  const raw = record.fields[filter.field];
-  if (NUMERIC_TYPES.includes(field.type) || [5, 1002, 1004].includes(field.type)) {
+  const isComputed = COMPUTED_TYPES.includes(field.type);
+  const raw = isComputed ? computedScalar(record.fields[filter.field], field.field_name) : record.fields[filter.field];
+  const computedNumericComparison = isComputed && (
+    !["equals", "contains"].includes(filter.operator) || (filter.operator === "equals" && typeof raw === "number" && numeric(filter.value) !== null));
+  if (field.type === 2 || [5, 1002, 1004].includes(field.type) || computedNumericComparison) {
     const left = numeric(raw);
     const right = numeric(filter.value);
     if (left === null || right === null) {
       if (raw == null || raw === "") return false;
-      throw new BaseQueryError("Cột lọc chứa dữ liệu không phải số; chưa thể lọc chính xác.");
+      throw new BaseQueryError(`Cột lọc “${field.field_name}” chứa dữ liệu không phải số; chưa thể thực hiện so sánh số.`);
     }
     switch (filter.operator) {
       case "equals": return left === right;
@@ -93,6 +118,7 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
     ...(query.action === "list" ? selected : []),
     ...(query.sumField ? [query.sumField] : []),
   ])];
+  const sumField = fields.find(field => field.field_name === query.sumField);
   let pageToken: string | undefined;
   let count = 0;
   let sum = 0;
@@ -107,10 +133,11 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
       if (!query.filters.every(filter => matches(record, filter, fields.find(field => field.field_name === filter.field)!))) continue;
       count++;
       if (query.action === "sum") {
-        const raw = record.fields[query.sumField!];
+        const stored = record.fields[query.sumField!];
+        const raw = sumField && COMPUTED_TYPES.includes(sumField.type) ? computedScalar(stored, sumField.field_name) : stored;
         if (raw != null && raw !== "") {
           const value = numeric(raw);
-          if (value === null) throw new BaseQueryError("Cột tính tổng có dữ liệu không phải số; không thể trả tổng chính xác.");
+          if (value === null) throw new BaseQueryError(`Cột tính tổng “${query.sumField}” có dữ liệu không phải số; không thể trả tổng chính xác. Cột công thức/lookup chỉ tính tổng khi kết quả là số.`);
           const adjusted = value - compensation;
           const next = sum + adjusted;
           compensation = (next - sum) - adjusted;

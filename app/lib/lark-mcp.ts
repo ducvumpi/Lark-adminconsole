@@ -29,7 +29,7 @@ const TOOLS = [
           properties: {
             field: { type: "string", description: "Tên cột chính xác từ list_base_fields." },
             operator: { type: "string", enum: ["equals", "contains", "gt", "gte", "lt", "lte"] },
-            value: { type: "string", maxLength: 200, description: "Văn bản/lựa chọn: equals hoặc contains, giữ dấu, không phân biệt hoa/thường. Số: dạng 2026 hoặc 1500000, không dấu phân cách. Ngày: Unix milliseconds; dùng gte/lt để lọc khoảng ngày." },
+            value: { type: "string", maxLength: 200, description: "Văn bản/lựa chọn: equals hoặc contains, giữ dấu, không phân biệt hoa/thường. Công thức/lookup có thể trả văn bản như Q4/2026 hoặc Tháng 10, không mặc định là số. Cột số: dạng 2026 hoặc 1500000, không dấu phân cách. Ngày: Unix milliseconds; dùng gte/lt để lọc khoảng ngày." },
           }, required: ["field", "operator", "value"],
         } },
         // Lark's Go schema reader expects `type` to be a string, not a union
