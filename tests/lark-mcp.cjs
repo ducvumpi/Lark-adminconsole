@@ -14,6 +14,7 @@ function load(file, extra = {}) {
 }
 const query = load("app/lib/lark-ai-query.ts");
 const bot = load("app/lib/lark-bot.ts");
+const reportFormatter = load("app/lib/lark-budget-report.ts");
 const env = { LARK_MCP_TOKEN: "offline-test-token" };
 const logs = [];
 const { handleMcp } = load("app/lib/lark-mcp.ts", {
@@ -21,6 +22,7 @@ const { handleMcp } = load("app/lib/lark-mcp.ts", {
   require: name => {
     if (name === "./lark-ai-query") return query;
     if (name === "./lark-bot") return bot;
+    if (name === "./lark-budget-report") return reportFormatter;
     if (name === "./lark-client") return { FIELD_TYPE_LABEL: { 1: "Văn bản", 2: "Số", 3: "Lựa chọn đơn" } };
     return require(name);
   },
@@ -92,7 +94,7 @@ async function main() {
   assert.equal(get.headers.get("allow"), "POST");
   assert.equal((await handleMcp(request(undefined, {}, "DELETE"), dependencies)).status, 405);
   const tools = (await (await post(rpc("tools/list"))).json()).result.tools;
-  assert.deepEqual(tools.map(tool => tool.name), ["list_base_fields", "query_base"]);
+  assert.deepEqual(tools.map(tool => tool.name), ["list_base_fields", "query_base", "summarize_budget"]);
   assert.ok(tools.every(tool => tool.annotations.readOnlyHint));
   // Regression: Lark's Go reader rejects JSON Schema type unions such as
   // type: ["string", "null"]. Inspect every nested property and array item.
@@ -119,7 +121,22 @@ async function main() {
   const listed = resultText(await call("query_base", { action: "list", columns: ["Brand"], filters: [{ field: "Brand", operator: "equals", value: "Other" }] }));
   assert.equal(listed.rows.length, 1);
   assert.equal(listed.rows[0].fields.Brand, "Other");
+  const all = resultText(await call("query_base", { action: "list", limit: 100, columns: ["Brand"] }));
+  assert.equal(all.rows.length, 3);
+  assert.equal(all.hasMore, false);
+  assert.equal(all.limit, 100);
+  assert.equal((await call("query_base", { action: "list", limit: 101 })).result.isError, true);
   assert.equal(resultText(await call("query_base", { action: "count" })).count, 3);
+  const report = resultText(await call("summarize_budget", { sumField: "Số tiền TGĐ duyệt", groupBy: ["Brand"], title: "Báo cáo thử" }));
+  assert.equal(report.sum, 1299);
+  assert.equal(report.count, 3);
+  assert.equal(report.groupCount, 2);
+  assert.match(report.reportText, /Báo cáo thử/);
+  assert.match(report.reportText, /Horus/);
+  assert.match(report.reportText, /1\.299/);
+  assert.equal((await call("summarize_budget", { sumField: "Số tiền TGĐ duyệt", groupBy: ["Missing"] })).result.isError, true);
+  assert.equal((await call("summarize_budget", { sumField: "Số tiền TGĐ duyệt", groupBy: ["Brand"], receiveId: "someone" })).error.code, -32602);
+  assert.equal((await call("query_base", { action: "report" })).error.code, -32602);
   const invalid = await call("query_base", { action: "sum", sumField: "Missing" });
   assert.equal(invalid.result.isError, true);
   assert.match(invalid.result.content[0].text, /cột số/);

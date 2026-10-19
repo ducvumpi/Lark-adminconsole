@@ -4,7 +4,28 @@ export type BaseReader = Pick<LarkBaseClient, "listFields" | "listRecords"> & Pa
 export class BaseQueryError extends Error {}
 type Operator = "equals" | "contains" | "gt" | "gte" | "lt" | "lte";
 type Condition = { field: string; operator: Operator; value: string };
-type Query = { action: "list" | "count" | "sum"; filters: Condition[]; sumField: string | null; columns: string[] };
+type Query = { action: "list" | "count" | "sum" | "report"; filters: Condition[]; sumField: string | null; columns: string[]; limit?: number; groupBy?: string[] };
+
+export interface BudgetReportGroup {
+  values: string[];
+  count: number;
+  sum: number;
+  numericCount: number;
+  emptyCount: number;
+}
+export interface BudgetReport {
+  action: "report";
+  groupBy: string[];
+  sumField: string;
+  count: number;
+  sum: number;
+  numericCount: number;
+  emptyCount: number;
+  groups: BudgetReportGroup[];
+  groupCount: number;
+  hasMoreGroups: boolean;
+  other: { count: number; sum: number; groupCount: number };
+}
 
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -49,15 +70,29 @@ function computedScalar(value: unknown, fieldName: string): unknown {
 }
 
 function validateQuery(input: unknown, fields: LarkField[]): Query {
-  if (!object(input) || !["list", "count", "sum"].includes(String(input.action))
+  if (!object(input) || !["list", "count", "sum", "report"].includes(String(input.action))
     || !Array.isArray(input.filters) || input.filters.length > 8
     || !Array.isArray(input.columns) || input.columns.length > 8) throw new BaseQueryError("Yêu cầu truy vấn không hợp lệ.");
+  if (input.limit !== undefined && (typeof input.limit !== "number" || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new BaseQueryError("limit phải là số nguyên từ 1 đến 100.");
+  }
   const findField = (name: unknown) => fields.find(field => field.field_name === name);
   for (const name of input.columns) if (typeof name !== "string" || !findField(name)) throw new BaseQueryError("Tên cột hiển thị không hợp lệ.");
-  if (input.action === "sum") {
+  if (input.action === "sum" || input.action === "report") {
     const field = findField(input.sumField);
     if (!field || !NUMERIC_TYPES.includes(field.type)) throw new BaseQueryError("Cần chọn đúng cột số để tính tổng.");
   } else if (input.sumField !== null) throw new BaseQueryError("sumField phải là null khi không tính tổng.");
+  if (input.action === "report") {
+    if (!Array.isArray(input.groupBy) || input.groupBy.length < 1 || input.groupBy.length > 2
+      || new Set(input.groupBy).size !== input.groupBy.length) throw new BaseQueryError("Báo cáo cần groupBy gồm 1–2 tên cột khác nhau.");
+    for (const name of input.groupBy) {
+      const field = findField(name);
+      if (typeof name !== "string" || !field || ![1, 2, 3, 13, 19, 20].includes(field.type)) {
+        throw new BaseQueryError("Cột nhóm phải là văn bản, số, lựa chọn đơn hoặc công thức/lookup trả giá trị đơn.");
+      }
+    }
+    if (input.limit !== undefined && input.limit > 30) throw new BaseQueryError("Báo cáo trong chat hiển thị tối đa 30 nhóm.");
+  }
   for (const filter of input.filters) {
     if (!object(filter) || typeof filter.field !== "string" || typeof filter.value !== "string"
       || filter.value.length > 200 || !["equals", "contains", "gt", "gte", "lt", "lte"].includes(String(filter.operator))) {
@@ -112,11 +147,13 @@ function matches(record: LarkRecord, filter: Condition, field: LarkField) {
 // Never returns a partial total/count when the scan budget is exhausted.
 export async function queryBase(client: BaseReader, fields: LarkField[], input: unknown, signal?: AbortSignal) {
   const query = validateQuery(input, fields);
+  const limit = query.limit ?? 10;
   const selected = query.columns.length ? query.columns : fields.slice(0, 8).map(field => field.field_name);
   const requested = [...new Set([
     ...query.filters.map(filter => filter.field),
     ...(query.action === "list" ? selected : []),
     ...(query.sumField ? [query.sumField] : []),
+    ...(query.action === "report" ? query.groupBy! : []),
   ])];
   const sumField = fields.find(field => field.field_name === query.sumField);
   // Push down exact single-select filters, resolving the canonical option name
@@ -137,6 +174,7 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
   let compensation = 0;
   let numericCount = 0;
   const rows: { recordId: string; fields: Record<string, string> }[] = [];
+  const groups = new Map<string, BudgetReportGroup & { compensation: number }>();
   const pageTokens = new Set<string>();
   for (let page = 0; page < 10; page++) {
     signal?.throwIfAborted();
@@ -147,7 +185,8 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
     for (const record of result.items) {
       if (!query.filters.every(filter => matches(record, filter, fields.find(field => field.field_name === filter.field)!))) continue;
       count++;
-      if (query.action === "sum") {
+      let amount: number | null = null;
+      if (query.action === "sum" || query.action === "report") {
         const stored = record.fields[query.sumField!];
         const raw = sumField && COMPUTED_TYPES.includes(sumField.type) ? computedScalar(stored, sumField.field_name) : stored;
         if (raw != null && raw !== "") {
@@ -157,17 +196,61 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
           const next = sum + adjusted;
           compensation = (next - sum) - adjusted;
           sum = next;
+          amount = value;
           numericCount++;
           if (!Number.isFinite(sum)) throw new BaseQueryError("Tổng vượt giới hạn tính toán.");
         }
       }
+      if (query.action === "report") {
+        const values = query.groupBy!.map(name => {
+          const field = fields.find(field => field.field_name === name)!;
+          const raw = COMPUTED_TYPES.includes(field.type) ? computedScalar(record.fields[name], name) : record.fields[name];
+          return display(raw).normalize("NFC").trim();
+        });
+        const key = JSON.stringify(values);
+        let group = groups.get(key);
+        if (!group) {
+          group = { values, count: 0, sum: 0, numericCount: 0, emptyCount: 0, compensation: 0 };
+          groups.set(key, group);
+        }
+        group.count++;
+        if (amount === null) group.emptyCount++;
+        else {
+          const adjusted = amount - group.compensation;
+          const next = group.sum + adjusted;
+          group.compensation = (next - group.sum) - adjusted;
+          group.sum = next;
+          group.numericCount++;
+          if (!Number.isFinite(group.sum)) throw new BaseQueryError("Tổng nhóm vượt giới hạn tính toán.");
+        }
+      }
       if (query.action === "list") {
-        if (rows.length === 10) return { action: "list", rows, hasMore: true, valuesTruncatedAt: 300 };
+        if (rows.length === limit) return { action: "list", rows, hasMore: true, limit, valuesTruncatedAt: 300 };
         rows.push({ recordId: record.record_id, fields: Object.fromEntries(selected.map(name => [name, display(record.fields[name]).slice(0, 300)])) });
       }
     }
     if (!result.hasMore) {
-      if (query.action === "list") return { action: "list", rows, hasMore: false, valuesTruncatedAt: 300 };
+      if (query.action === "list") return { action: "list", rows, hasMore: false, limit, valuesTruncatedAt: 300 };
+      if (query.action === "report") {
+        const ordered = [...groups.values()].sort((a, b) => b.sum - a.sum || JSON.stringify(a.values).localeCompare(JSON.stringify(b.values), "vi"));
+        const omitted = ordered.slice(limit);
+        let otherSum = 0;
+        let otherCompensation = 0;
+        for (const group of omitted) {
+          const adjusted = group.sum - otherCompensation;
+          const next = otherSum + adjusted;
+          otherCompensation = (next - otherSum) - adjusted;
+          otherSum = next;
+          if (!Number.isFinite(otherSum)) throw new BaseQueryError("Tổng nhóm khác vượt giới hạn tính toán.");
+        }
+        const report: BudgetReport = {
+          action: "report", groupBy: query.groupBy!, sumField: query.sumField!, count, sum, numericCount, emptyCount: count - numericCount,
+          groups: ordered.slice(0, limit).map(({ values, count, sum, numericCount, emptyCount }) => ({ values, count, sum, numericCount, emptyCount })),
+          groupCount: groups.size, hasMoreGroups: omitted.length > 0,
+          other: { count: omitted.reduce((total, group) => total + group.count, 0), sum: otherSum, groupCount: omitted.length },
+        };
+        return report;
+      }
       return { action: query.action, count, ...(query.action === "sum" ? { field: query.sumField, sum, numericCount, emptyCount: count - numericCount } : {}) };
     }
     if (!result.pageToken || pageTokens.has(result.pageToken)) throw new BaseQueryError("Phân trang Base lỗi; không trả kết quả chưa đầy đủ.");

@@ -64,6 +64,21 @@ async function main() {
   assert.equal(listed.rows.length, 10);
   assert.equal(listed.hasMore, true);
   assert.equal(listed.rows[0].fields.Brand.length, 300);
+  const fullRows = Array.from({ length: 26 }, (_, i) => row(String(i), "ABC", i));
+  const full = await queryBase(reader([
+    { items: fullRows.slice(0, 15), hasMore: true, pageToken: "remaining" },
+    { items: fullRows.slice(15), hasMore: false },
+  ]), fields, { action: "list", sumField: null, columns: ["Brand"], filters: [], limit: 100 });
+  assert.equal(full.rows.length, 26);
+  assert.equal(full.hasMore, false);
+  assert.equal(full.rows[25].recordId, "25");
+  const capped = await queryBase(reader([{ items: fullRows, hasMore: false }]), fields,
+    { action: "list", sumField: null, columns: [], filters: [], limit: 20 });
+  assert.equal(capped.rows.length, 20);
+  assert.equal(capped.hasMore, true);
+  for (const limit of [0, 101, 1.5, "26"]) {
+    await assert.rejects(queryBase(reader([]), fields, { action: "list", sumField: null, columns: [], filters: [], limit }), /limit/);
+  }
   const dates = await queryBase(reader([{ items: [row("a", "ABC", 1)], hasMore: false }]), fields,
     { action: "count", sumField: null, columns: [], filters: [{ field: "Ngày", operator: "gte", value: "1767225600000" }] });
   assert.equal(dates.count, 1);
