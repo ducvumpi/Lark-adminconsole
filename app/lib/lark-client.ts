@@ -41,7 +41,9 @@ export const FIELD_TYPE_LABEL: Record<number, string> = {
   1005: "Số tự động",
 };
 
-class LarkApiError extends Error { }
+class LarkApiError extends Error {
+  constructor(message: string, readonly apiCode?: number) { super(message); }
+}
 /** Hàm dọn dẹp và chuẩn hóa dữ liệu để tránh lỗi TextFieldConvFail */
 // // type: kiểu field thật lấy từ listFields() — 2 = Số, còn lại mặc định coi là Văn bản
 // function sanitizeFieldValue(value: unknown, fieldType?: number): unknown {
@@ -135,7 +137,7 @@ export class LarkBaseClient {
     });
 
     if (res.data.code !== 0) {
-      throw new LarkApiError(`Lark auth lỗi (code ${res.data.code}): ${res.data.msg}`);
+      throw new LarkApiError(`Lark auth lỗi (code ${res.data.code}): ${res.data.msg}`, res.data.code);
     }
 
     this.accessToken = res.data.tenant_access_token;
@@ -155,7 +157,7 @@ export class LarkBaseClient {
       content: JSON.stringify({ text }),
       uuid,
     }, { headers, timeout: 15000 });
-    if (res.data.code !== 0) throw new LarkApiError(`Lark reply failed (${res.data.code})`);
+    if (res.data.code !== 0) throw new LarkApiError(`Lark reply failed (${res.data.code})`, res.data.code);
   }
 
   async uploadAttachment(fileName: string, fileBytes: Uint8Array): Promise<string> {
@@ -238,7 +240,7 @@ export class LarkBaseClient {
 
     const res = await this.http.get<any>(this.tablePath("/records"), { headers, params });
     if (res.data.code !== 0) {
-      throw new LarkApiError(`Lấy danh sách record lỗi (code ${res.data.code}): ${res.data.msg}`);
+      throw new LarkApiError(`Lấy danh sách record lỗi (code ${res.data.code}): ${res.data.msg}`, res.data.code);
     }
     const d = res.data.data;
     return {

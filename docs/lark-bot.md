@@ -50,4 +50,22 @@ Webhook phản hồi ngay và xử lý qua Next.js `after`; máy chủ triển k
 
 Kiểm tra cục bộ: `node tests/lark-bot.cjs`. Cần kiểm tra thực tế sau khi triển khai: xác minh URL, tài khoản được phép nhận dữ liệu, tài khoản ngoài danh sách/chat nhóm không nhận dữ liệu và Base thiếu quyền trả thông báo lỗi.
 
+## Bot không trả lời
+
+Gửi `base` trong chat riêng (không cần OpenAI), mở Vercel → Logs và tìm `/api/bot/lark/events` hoặc `Lark bot:`. POST trả 200 chỉ xác nhận đã nhận sự kiện; xem log để biết sự kiện được xử lý hay bỏ qua:
+
+| Log/lý do | Cách kiểm tra |
+| --- | --- |
+| Không có POST mới khi nhắn bot | Kiểm tra đăng ký `im.message.receive_v1`, đúng ứng dụng/URL Production, quyền nhận tin nhắn và phiên bản ứng dụng đã phát hành. Xác minh challenge thành công chưa chứng minh tin nhắn được chuyển tới webhook. |
+| `allowed_users_not_configured` | Thêm `LARK_BOT_ALLOWED_OPEN_IDS` vào môi trường Production rồi redeploy. Log có `senderOpenId` của người gửi để quản trị viên đối chiếu và đưa đúng tài khoản vào danh sách. |
+| `sender_not_allowed` | Đối chiếu `senderOpenId` với danh sách; không dùng user ID/union ID thay cho Open ID. Không mở quyền cho mọi tài khoản để thử. |
+| `app_id_mismatch` | App ID trong sự kiện phải khớp ứng dụng của Base đang chọn; log ghi `receivedAppId` và `configuredAppId`. |
+| `invalid_event_auth` | Kiểm tra Verification Token và Encrypt Key của đúng ứng dụng trong môi trường Production. |
+| `not_private_chat` / `unsupported_message_type` | Gửi tin nhắn văn bản trong chat riêng với bot. Mention trong tin nhắn văn bản được loại bỏ trước khi phân tích lệnh. |
+| `accepted` rồi `lookup failed` | Kiểm tra cấu hình/quyền đọc Base, mã `apiCode`/`httpStatus` nếu có. Bot sẽ thử gửi thông báo lỗi. |
+| `failed to send reply` | Kiểm tra `apiCode`/`httpStatus` và quyền gửi tin nhắn của bot. Log chỉ ghi mã lỗi, không ghi token, nội dung hay toàn bộ lỗi Axios. |
+| `replied` | API Lark đã chấp nhận gửi trả lời cho message ID ghi trong log. |
+
+Sau mỗi lần đổi biến môi trường cần redeploy, rồi gửi một tin nhắn mới. Log có Open ID/message ID để chẩn đoán; chỉ chia sẻ phần mã lỗi cần thiết, không chia sẻ API key/token.
+
 Tài liệu Lark: [Node SDK — sự kiện và bot](https://github.com/larksuite/node-sdk), [Reply message](https://open.larksuite.com/document/server-docs/im-v1/message/reply).

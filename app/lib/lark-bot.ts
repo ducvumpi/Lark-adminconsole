@@ -35,6 +35,29 @@ export function decodeLarkEvent(raw: string, headers: Headers, token: string, en
 
 export const BOT_HELP = "Tra cứu Base đang chọn trong Cài đặt:\nbase — xem 10 dòng đầu\nbase Brand=ABC — lọc chính xác theo cột văn bản\nbase Mã ngân sách=ADS001\nMỗi lần trả tối đa 10 dòng. Hiện hỗ trợ lọc cột văn bản và lựa chọn đơn.";
 
+export function normalizeBotText(text: string, mentions: unknown): string {
+  if (Array.isArray(mentions)) {
+    for (const mention of mentions) {
+      if (mention && typeof mention === "object" && typeof mention.key === "string" && mention.key) {
+        text = text.split(mention.key).join("");
+      }
+    }
+  }
+  return text.trim();
+}
+
+// Do not log whole Axios errors: they can contain Authorization/App Secret.
+export function larkErrorCodes(error: unknown) {
+  if (!error || typeof error !== "object") return {};
+  const candidate = error as { apiCode?: unknown; code?: unknown; response?: { status?: unknown; data?: { code?: unknown } } };
+  const apiCode = candidate.apiCode ?? candidate.response?.data?.code;
+  return {
+    ...(typeof apiCode === "number" ? { apiCode } : {}),
+    ...(typeof candidate.response?.status === "number" ? { httpStatus: candidate.response.status } : {}),
+    ...(["ECONNABORTED", "ETIMEDOUT", "ERR_CANCELED", "ENOTFOUND", "ECONNRESET"].includes(String(candidate.code)) ? { networkCode: candidate.code } : {}),
+  };
+}
+
 export function parseBaseCommand(text: string): { field?: string; value?: string } | null {
   const match = text.trim().match(/^\/?base(?:\s+(.+))?$/i);
   if (!match) return null;

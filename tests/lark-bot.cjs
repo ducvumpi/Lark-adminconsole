@@ -9,7 +9,10 @@ vm.createContext(context);
 vm.runInContext(ts.transpile(fs.readFileSync("app/lib/lark-bot.ts", "utf8"), {
   module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020,
 }), context);
-const { decodeLarkEvent, parseBaseCommand, formatBaseRecords } = context.exports;
+const { decodeLarkEvent, parseBaseCommand, formatBaseRecords, normalizeBotText, larkErrorCodes } = context.exports;
+assert.equal(normalizeBotText("@_user_1 base", [{ key: "@_user_1" }]), "base");
+assert.equal(normalizeBotText("base Brand=ABC", null), "base Brand=ABC");
+assert.equal(JSON.stringify(larkErrorCodes({ message: "SECRET", config: { token: "SECRET" }, response: { status: 403, data: { code: 99991672, msg: "SECRET" } } })), '{"apiCode":99991672,"httpStatus":403}');
 const raw = JSON.stringify({ token: "secret", type: "url_verification", challenge: "test" });
 assert.equal(decodeLarkEvent(raw, new Headers(), "secret").challenge, "test");
 assert.throws(() => decodeLarkEvent(raw, new Headers(), ""));
@@ -47,16 +50,23 @@ async function checkRoute() {
   const replies = [];
   let reads = 0;
   let aiCalls = 0;
+  let failReply = false;
+  const logs = [];
+  const logger = Object.fromEntries(["info", "warn", "error"].map(level => [level, (...args) => logs.push(args)]));
   const env = { LARK_VERIFICATION_TOKEN: "secret", LARK_BOT_ALLOWED_OPEN_IDS: "ou_allowed" };
-  const route = { exports: {}, Response, Date, Map, console, process: { env },
+  const route = { exports: {}, Response, Date, Map, AbortSignal, console: logger, process: { env },
     require: (name) => {
       if (name === "next/server") return { after: callback => scheduled.push(callback) };
       if (name.endsWith("/lark-bot")) return context.exports;
       if (name.endsWith("/lark-openai")) return { answerWithOpenAI: async () => { aiCalls++; return "Tổng ngân sách: 300."; } };
       if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }) };
       if (name.endsWith("/lark-client")) return { LarkBaseClient: class {
+        async listFields() { return [{ field_name: "Brand", type: 1 }]; }
         async listRecords() { reads++; return { items: [{ fields: { Brand: "ABC" } }], hasMore: false }; }
-        async replyText(...args) { replies.push(args); }
+        async replyText(...args) {
+          if (failReply) throw { response: { status: 403, data: { code: 99991672, msg: "SECRET" } }, config: { token: "SECRET" } };
+          replies.push(args);
+        }
       } };
       return require(name);
     },
@@ -77,6 +87,7 @@ async function checkRoute() {
   env.LARK_BOT_ALLOWED_OPEN_IDS = "";
   await post(event);
   assert.equal(scheduled.length, 0);
+  assert.ok(logs.some(entry => entry[1]?.reason === "allowed_users_not_configured"));
   env.LARK_BOT_ALLOWED_OPEN_IDS = "ou_allowed";
   event.event.message.chat_type = "group";
   await post(event);
@@ -85,6 +96,7 @@ async function checkRoute() {
   event.header.app_id = "other";
   await post(event);
   assert.equal(scheduled.length, 0);
+  assert.ok(logs.some(entry => entry[1]?.reason === "app_id_mismatch"));
   event.header.app_id = "app";
   assert.equal((await post(event)).status, 200);
   await post(event);
@@ -104,5 +116,30 @@ async function checkRoute() {
   await post(event);
   assert.equal(scheduled.length, 2);
   assert.equal(aiCalls, 1);
+  assert.ok(logs.some(entry => entry[1]?.reason === "sender_not_allowed" && entry[1].senderOpenId === "ou_stranger"));
+  event.event.sender.sender_id.open_id = "ou_allowed";
+  event.event.message.message_id = "msg-mention";
+  event.event.message.mentions = [{ key: "@_user_1" }];
+  event.event.message.content = JSON.stringify({ text: "@_user_1 base" });
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  assert.equal(aiCalls, 1);
+  assert.match(replies[replies.length - 1][1], /Brand: ABC/);
+  event.event.message.message_id = "msg-failure";
+  failReply = true;
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  assert.ok(logs.some(entry => entry[0] === "Lark bot: failed to send reply" && entry[1]?.apiCode === 99991672));
+  assert.ok(!JSON.stringify(logs).includes("SECRET"));
+  failReply = false;
+  const beforeRetry = scheduled.length;
+  await post(event);
+  assert.equal(scheduled.length, beforeRetry + 1);
+  await scheduled[scheduled.length - 1]();
+  event.event.message.message_id = "msg-invalid-field";
+  event.event.message.content = JSON.stringify({ text: "base Missing=x" });
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  assert.match(replies[replies.length - 1][1], /Không tìm thấy cột/);
 }
 checkRoute().then(() => console.log("Lark bot checks passed"), error => { console.error(error); process.exitCode = 1; });
