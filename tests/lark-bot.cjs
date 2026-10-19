@@ -22,7 +22,17 @@ const envelope = JSON.stringify({ encrypt: encrypted });
 const signature = crypto.createHash("sha256").update("123nonceencrypt-key" + envelope).digest("hex");
 const headers = new Headers({ "x-lark-request-timestamp": "123", "x-lark-request-nonce": "nonce", "x-lark-signature": signature });
 assert.equal(decodeLarkEvent(envelope, headers, "secret", "encrypt-key").challenge, "test");
-assert.throws(() => decodeLarkEvent(envelope + " ", headers, "secret", "encrypt-key"));
+assert.equal(decodeLarkEvent(envelope, new Headers(), "secret", "encrypt-key").challenge, "test");
+assert.equal(decodeLarkEvent(raw, new Headers(), "secret", "encrypt-key").challenge, "test");
+assert.throws(() => decodeLarkEvent(envelope, new Headers(), "wrong", "encrypt-key"));
+const normalEvent = JSON.stringify({ header: { token: "secret", event_type: "im.message.receive_v1" } });
+assert.throws(() => decodeLarkEvent(normalEvent, new Headers(), "secret", "encrypt-key"));
+const normalHeaders = new Headers({
+  "x-lark-request-timestamp": "123", "x-lark-request-nonce": "nonce",
+  "x-lark-signature": crypto.createHash("sha256").update("123nonceencrypt-key" + normalEvent).digest("hex"),
+});
+assert.equal(decodeLarkEvent(normalEvent, normalHeaders, "secret", "encrypt-key").header.event_type, "im.message.receive_v1");
+assert.throws(() => decodeLarkEvent(normalEvent + " ", normalHeaders, "secret", "encrypt-key"));
 assert.equal(parseBaseCommand("base").field, undefined);
 assert.equal(parseBaseCommand("base Brand=ABC").value, "ABC");
 assert.equal(parseBaseCommand("base Brand=ABC=DEF").value, "ABC=DEF");

@@ -9,14 +9,6 @@ function equal(a: string, b: string) {
 export function decodeLarkEvent(raw: string, headers: Headers, token: string, encryptKey?: string) {
   if (!token) throw new Error("Missing verification token");
   let payload = JSON.parse(raw);
-  if (encryptKey) {
-    const timestamp = headers.get("x-lark-request-timestamp") || "";
-    const nonce = headers.get("x-lark-request-nonce") || "";
-    const signature = createHash("sha256").update(timestamp + nonce + encryptKey + raw).digest("hex");
-    if (!timestamp || !nonce || !equal(signature, headers.get("x-lark-signature") || "")) {
-      throw new Error("Invalid signature");
-    }
-  }
   if (typeof payload.encrypt === "string") {
     if (!encryptKey) throw new Error("Missing encrypt key");
     const encrypted = Buffer.from(payload.encrypt, "base64");
@@ -27,6 +19,17 @@ export function decodeLarkEvent(raw: string, headers: Headers, token: string, en
   if (!payload || typeof payload !== "object") throw new Error("Invalid event");
   const actual = payload.header?.token ?? payload.token;
   if (typeof actual !== "string" || !equal(actual, token)) throw new Error("Invalid token");
+  // URL verification can arrive without event-signature headers. Only this
+  // token-authenticated handshake is exempt; regular events still require them.
+  const isChallenge = payload.type === "url_verification" && typeof payload.challenge === "string";
+  if (encryptKey && !isChallenge) {
+    const timestamp = headers.get("x-lark-request-timestamp") || "";
+    const nonce = headers.get("x-lark-request-nonce") || "";
+    const signature = createHash("sha256").update(timestamp + nonce + encryptKey + raw).digest("hex");
+    if (!timestamp || !nonce || !equal(signature, headers.get("x-lark-signature") || "")) {
+      throw new Error("Invalid signature");
+    }
+  }
   return payload;
 }
 
