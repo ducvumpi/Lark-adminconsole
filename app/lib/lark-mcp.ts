@@ -23,7 +23,7 @@ const TOOLS = [
       type: "object", additionalProperties: false,
       properties: {
         action: { type: "string", enum: ["list", "count", "sum"] },
-        filters: { type: "array", maxItems: 8, default: [], items: {
+        filters: { type: "array", maxItems: 8, items: {
           type: "object", additionalProperties: false,
           properties: {
             field: { type: "string", description: "Tên cột chính xác từ list_base_fields." },
@@ -31,8 +31,10 @@ const TOOLS = [
             value: { type: "string", maxLength: 200, description: "Văn bản/lựa chọn: equals hoặc contains, giữ dấu, không phân biệt hoa/thường. Số: dạng 2026 hoặc 1500000, không dấu phân cách. Ngày: Unix milliseconds; dùng gte/lt để lọc khoảng ngày." },
           }, required: ["field", "operator", "value"],
         } },
-        sumField: { type: ["string", "null"], default: null, description: "Tên cột số/công thức trả số để tính tổng; bắt buộc khi action=sum. Các action khác dùng null hoặc bỏ qua." },
-        columns: { type: "array", maxItems: 8, items: { type: "string" }, default: [], description: "Tên các cột cần trả về khi list; [] chọn tối đa 8 cột đầu. Mỗi giá trị dài được rút gọn ở 300 ký tự." },
+        // Lark's Go schema reader expects `type` to be a string, not a union
+        // array. Keep this optional; tools/call supplies null internally.
+        sumField: { type: "string", description: "Tên cột số/công thức trả số để tính tổng; bắt buộc khi action=sum. Bỏ trường này khi list/count." },
+        columns: { type: "array", maxItems: 8, items: { type: "string" }, description: "Tên các cột cần trả về khi list; bỏ qua hoặc [] chọn tối đa 8 cột đầu. Mỗi giá trị dài được rút gọn ở 300 ký tự." },
       }, required: ["action"],
     },
     annotations: ANNOTATIONS,

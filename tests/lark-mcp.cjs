@@ -91,6 +91,18 @@ async function main() {
   const tools = (await (await post(rpc("tools/list"))).json()).result.tools;
   assert.deepEqual(tools.map(tool => tool.name), ["list_base_fields", "query_base"]);
   assert.ok(tools.every(tool => tool.annotations.readOnlyHint));
+  // Regression: Lark's Go reader rejects JSON Schema type unions such as
+  // type: ["string", "null"]. Inspect every nested property and array item.
+  const checkLarkSchema = schema => {
+    assert.equal(typeof schema.type, "string");
+    for (const property of Object.values(schema.properties || {})) checkLarkSchema(property);
+    if (schema.items) checkLarkSchema(schema.items);
+    assert.equal(Array.isArray(schema.default), false);
+  };
+  tools.forEach(tool => checkLarkSchema(tool.inputSchema));
+  const querySchema = tools.find(tool => tool.name === "query_base").inputSchema;
+  assert.equal(querySchema.properties.sumField.type, "string");
+  assert.ok(!querySchema.required.includes("sumField"));
   assert.equal(constructions, 0);
 
   const schema = resultText(await call("list_base_fields", {}));
