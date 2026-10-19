@@ -112,11 +112,12 @@ export class LarkBaseClient {
   private accessToken = "";
   private tokenExpiry = 0;
 
-  constructor() {
+  constructor(options?: { signal?: AbortSignal }) {
     const { apiBaseUrl } = getConfig();
     this.http = axios.create({
       baseURL: apiBaseUrl,
       headers: { "Content-Type": "application/json" },
+      ...(options?.signal ? { signal: options.signal, timeout: 12000 } : {}),
     });
   }
 

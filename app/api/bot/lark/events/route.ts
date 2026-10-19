@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { BOT_HELP, decodeLarkEvent, formatBaseRecords, parseBaseCommand } from "@/app/lib/lark-bot";
 import { LarkBaseClient } from "@/app/lib/lark-client";
 import { getConfig } from "@/app/lib/config";
+import { answerWithOpenAI } from "@/app/lib/lark-openai";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -63,6 +64,8 @@ export async function POST(request: Request) {
         }
         const result = await client.listRecords({ pageSize: 10, filter });
         reply = formatBaseRecords(result.items, result.hasMore);
+      } else {
+        reply = await answerWithOpenAI(text);
       }
     } catch {
       reply = "Chưa đọc được Base. Vui lòng kiểm tra cấu hình, quyền đọc Base của ứng dụng và bảng đang chọn.";

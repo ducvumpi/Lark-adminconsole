@@ -46,11 +46,13 @@ async function checkRoute() {
   const scheduled = [];
   const replies = [];
   let reads = 0;
+  let aiCalls = 0;
   const env = { LARK_VERIFICATION_TOKEN: "secret", LARK_BOT_ALLOWED_OPEN_IDS: "ou_allowed" };
   const route = { exports: {}, Response, Date, Map, console, process: { env },
     require: (name) => {
       if (name === "next/server") return { after: callback => scheduled.push(callback) };
       if (name.endsWith("/lark-bot")) return context.exports;
+      if (name.endsWith("/lark-openai")) return { answerWithOpenAI: async () => { aiCalls++; return "Tổng ngân sách: 300."; } };
       if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }) };
       if (name.endsWith("/lark-client")) return { LarkBaseClient: class {
         async listRecords() { reads++; return { items: [{ fields: { Brand: "ABC" } }], hasMore: false }; }
@@ -91,5 +93,16 @@ async function checkRoute() {
   assert.equal(reads, 1);
   assert.equal(replies.length, 1);
   assert.match(replies[0][1], /Brand: ABC/);
+  event.event.message.message_id = "msg-ai";
+  event.event.message.content = JSON.stringify({ text: "Tổng ngân sách năm 2026 là bao nhiêu?" });
+  await post(event);
+  await scheduled[1]();
+  assert.equal(aiCalls, 1);
+  assert.equal(replies[1][1], "Tổng ngân sách: 300.");
+  event.event.sender.sender_id.open_id = "ou_stranger";
+  event.event.message.message_id = "msg-stranger";
+  await post(event);
+  assert.equal(scheduled.length, 2);
+  assert.equal(aiCalls, 1);
 }
 checkRoute().then(() => console.log("Lark bot checks passed"), error => { console.error(error); process.exitCode = 1; });
