@@ -19,7 +19,7 @@ const TOOLS = [
   },
   {
     name: "query_base",
-    description: "Lọc linh hoạt dữ liệu ngân sách bằng AND theo câu hỏi người dùng. Hỗ trợ list (tối đa 10 bản ghi), count và sum (code tính tổng). Tổng/đếm chỉ trả khi đã quét hết bảng, tối đa 5.000 dòng. Chỉ đọc, không thêm/sửa/xóa. Không group-by, không tự loại trùng hoặc loại ngân sách cha/con.",
+    description: "Lọc linh hoạt dữ liệu ngân sách bằng AND theo câu hỏi người dùng. Hỗ trợ list (tối đa 10 bản ghi), count và sum (code tính tổng). Bộ lọc equals trên cột lựa chọn đơn được gửi tới Base để giảm dữ liệu cần đọc. Tổng/đếm chỉ trả khi đọc hết tập ứng viên, tối đa 5.000 dòng. Chỉ đọc, không thêm/sửa/xóa. Không group-by, không tự loại trùng hoặc loại ngân sách cha/con.",
     inputSchema: {
       type: "object", additionalProperties: false,
       properties: {
@@ -141,15 +141,17 @@ export async function handleMcp(request: Request, dependencies?: Dependencies): 
       if (params.name === "list_base_fields" && Object.keys(args).length) return rpcError(id, -32602, "list_base_fields takes no arguments");
       if (params.name === "query_base" && Object.keys(args).some(key => !["action", "filters", "sumField", "columns"].includes(key))) return rpcError(id, -32602, "Unknown query argument");
       const started = Date.now();
-      const deadline = AbortSignal.timeout(40000);
+      const deadline = AbortSignal.timeout(25000);
       const signal = AbortSignal.any([request.signal, deadline]);
       let stage = "create_client";
+      console.info("Lark MCP: tool started", { tool: params.name });
       try {
         const client = dependencies?.createClient?.(signal) ?? new LarkBaseClient({ signal });
         stage = "list_fields";
         const fields = await client.listFields();
         if (!fields.length) return result(toolResult("Bảng Base đang chọn chưa có cột để tra cứu.", true));
         if (params.name === "list_base_fields") {
+          console.info("Lark MCP: tool completed", { tool: params.name, elapsedMs: Date.now() - started });
           return result(toolResult({ fields: fields.map(field => ({
             name: field.field_name, type: field.type, label: FIELD_TYPE_LABEL[field.type] ?? "Khác",
             ...(field.property?.options ? { options: field.property.options.map(option => option.name) } : {}),
@@ -157,9 +159,13 @@ export async function handleMcp(request: Request, dependencies?: Dependencies): 
         }
         stage = "query_records";
         const output = await queryBase(client, fields, { filters: [], sumField: null, columns: [], ...args }, signal);
+        console.info("Lark MCP: tool completed", { tool: params.name, elapsedMs: Date.now() - started });
         return result(toolResult(output));
       } catch (error) {
-        if (error instanceof BaseQueryError) return result(toolResult(error.message, true));
+        if (error instanceof BaseQueryError) {
+          console.warn("Lark MCP: query not completed", { tool: params.name, stage, reason: "validation_or_query_limit", elapsedMs: Date.now() - started });
+          return result(toolResult(error.message, true));
+        }
         const codes = larkErrorCodes(error);
         console.error("Lark MCP: Base read failed or timed out", {
           tool: params.name, stage, ...codes, elapsedMs: Date.now() - started,

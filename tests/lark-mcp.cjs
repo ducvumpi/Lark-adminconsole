@@ -17,7 +17,7 @@ const bot = load("app/lib/lark-bot.ts");
 const env = { LARK_MCP_TOKEN: "offline-test-token" };
 const logs = [];
 const { handleMcp } = load("app/lib/lark-mcp.ts", {
-  process: { env }, console: { error: (...args) => logs.push(args) },
+  process: { env }, console: Object.fromEntries(["info", "warn", "error"].map(level => [level, (...args) => logs.push(args)])),
   require: name => {
     if (name === "./lark-ai-query") return query;
     if (name === "./lark-bot") return bot;

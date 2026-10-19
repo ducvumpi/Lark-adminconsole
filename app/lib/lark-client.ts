@@ -19,6 +19,12 @@ export interface ListRecordsResult {
   total: number;
 }
 
+export interface LarkSearchCondition {
+  field_name: string;
+  operator: "is";
+  value: string[];
+}
+
 /** Tên hiển thị dễ hiểu cho loại field của Lark Base */
 export const FIELD_TYPE_LABEL: Record<number, string> = {
   1: "Văn bản",
@@ -249,6 +255,28 @@ export class LarkBaseClient {
       total: d.total ?? 0,
     };
   }
+  async searchRecords(options: {
+    conditions: LarkSearchCondition[];
+    pageSize?: number;
+    pageToken?: string;
+    fieldNames?: string[];
+  }): Promise<ListRecordsResult> {
+    const headers = await this.authHeader();
+    const res = await this.http.post(this.tablePath("/records/search"), {
+      automatic_fields: true,
+      field_names: options.fieldNames,
+      filter: { conjunction: "and", conditions: options.conditions },
+    }, {
+      headers,
+      params: { page_size: options.pageSize ?? 500, ...(options.pageToken ? { page_token: options.pageToken } : {}) },
+    });
+    if (res.data.code !== 0) {
+      throw new LarkApiError(`Tìm record lỗi (code ${res.data.code}): ${res.data.msg}`, res.data.code);
+    }
+    const data = res.data.data;
+    return { items: data.items ?? [], hasMore: Boolean(data.has_more), pageToken: data.page_token, total: data.total ?? 0 };
+  }
+
   /** Lấy CHÍNH XÁC 1 record theo record_id — dùng để xác minh trực tiếp record có tồn tại trong
    * đúng Base/Table đang cấu hình hay không (hữu ích khi debug "audit log có, nhưng Base không thấy"). */
   async getRecord(recordId: string): Promise<LarkRecord | null> {

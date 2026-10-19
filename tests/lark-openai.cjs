@@ -95,6 +95,45 @@ async function main() {
     computedFields, { ...formulaQuery, filters: [] }), /Tổng cha con.*không phải số/);
   await assert.rejects(queryBase(reader([]), fields, { ...sumQuery, filters: [{ field: "Năm", operator: "equals", value: "năm 2026" }] }), /Năm.*lỗi bộ lọc/);
 
+  const selectFields = [
+    { field_name: "Brand", type: 3, property: { options: [{ name: "Horus" }] } },
+    { field_name: "Tháng", type: 3, property: { options: [{ name: "Tháng 10" }] } },
+    { field_name: "Năm", type: 20 }, { field_name: "Số tiền", type: 2 },
+  ];
+  const selectedQuery = { action: "sum", sumField: "Số tiền", columns: [], filters: [
+    { field: "Brand", operator: "equals", value: "horus" },
+    { field: "Tháng", operator: "equals", value: "tháng 10" },
+    { field: "Năm", operator: "equals", value: "2026" },
+  ] };
+  const searchCalls = [];
+  const candidate = (id, year, amount) => ({ record_id: id, fields: { Brand: "Horus", Tháng: "Tháng 10", "Năm": String(year), "Số tiền": amount } });
+  const searchClient = {
+    listRecords: async () => { throw new Error("Must filter on Base, not scan the whole table"); },
+    searchRecords: async options => {
+      searchCalls.push(options);
+      return options.pageToken
+        ? { items: [candidate("s3", 2026, 300)], hasMore: false, total: 9999 }
+        : { items: [candidate("s1", 2026, 100), candidate("s2", 2025, 200)], hasMore: true, pageToken: "search-page2", total: 9999 };
+    },
+  };
+  const pushed = await queryBase(searchClient, selectFields, selectedQuery);
+  assert.equal(pushed.sum, 400);
+  assert.equal(pushed.count, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(searchCalls[0].conditions)), [
+    { field_name: "Brand", operator: "is", value: ["Horus"] },
+    { field_name: "Tháng", operator: "is", value: ["Tháng 10"] },
+  ]);
+  assert.equal(searchCalls[1].pageToken, "search-page2");
+  const pushedCount = await queryBase(searchClient, selectFields, { ...selectedQuery, action: "count", sumField: null });
+  assert.equal(pushedCount.count, 2);
+  await assert.rejects(queryBase({ ...searchClient, searchRecords: async () => { throw new Error("Search unavailable"); } }, selectFields, selectedQuery), /Search unavailable/);
+  const ambiguous = selectFields.map(field => field.field_name === "Brand"
+    ? { ...field, property: { options: [{ name: "Horus" }, { name: "HORUS" }] } } : field);
+  const ambiguousClient = reader([{ items: [], hasMore: false }]);
+  ambiguousClient.searchRecords = async () => { throw new Error("Ambiguous option must not be pushed"); };
+  await queryBase(ambiguousClient, ambiguous, { action: "count", sumField: null, columns: [], filters: [selectedQuery.filters[0]] });
+  assert.equal(ambiguousClient.requests.length, 1);
+
   const env = { OPENAI_API_KEY: "fake-key-for-offline-test", OPENAI_MODEL: "test-model" };
   const { answerWithOpenAI } = load("app/lib/lark-openai.ts", {
     process: { env }, console: { error() {} },

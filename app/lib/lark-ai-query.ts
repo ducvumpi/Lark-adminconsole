@@ -1,6 +1,6 @@
-import type { LarkBaseClient, LarkField, LarkRecord } from "./lark-client";
+import type { LarkBaseClient, LarkField, LarkRecord, LarkSearchCondition } from "./lark-client";
 
-export type BaseReader = Pick<LarkBaseClient, "listFields" | "listRecords">;
+export type BaseReader = Pick<LarkBaseClient, "listFields" | "listRecords"> & Partial<Pick<LarkBaseClient, "searchRecords">>;
 export class BaseQueryError extends Error {}
 type Operator = "equals" | "contains" | "gt" | "gte" | "lt" | "lte";
 type Condition = { field: string; operator: Operator; value: string };
@@ -119,6 +119,18 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
     ...(query.sumField ? [query.sumField] : []),
   ])];
   const sumField = fields.find(field => field.field_name === query.sumField);
+  // Push down exact single-select filters, resolving the canonical option name
+  // so case-insensitive matching remains unchanged. Other types stay local:
+  // formula/text/date API semantics can differ from our scalar comparisons.
+  const conditions: LarkSearchCondition[] = [];
+  for (const filter of query.filters) {
+    const field = fields.find(field => field.field_name === filter.field)!;
+    if (field.type !== 3 || filter.operator !== "equals" || !filter.value.trim()) continue;
+    const normalize = (value: string) => value.normalize("NFC").toLocaleLowerCase("vi").trim();
+    const options = field.property?.options?.filter(option => normalize(option.name) === normalize(filter.value));
+    if (options?.length === 1) conditions.push({ field_name: field.field_name, operator: "is", value: [options[0].name] });
+  }
+  const useSearch = conditions.length > 0 && Boolean(client.searchRecords);
   let pageToken: string | undefined;
   let count = 0;
   let sum = 0;
@@ -128,7 +140,10 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
   const pageTokens = new Set<string>();
   for (let page = 0; page < 10; page++) {
     signal?.throwIfAborted();
-    const result = await client.listRecords({ pageSize: 500, pageToken, fieldNames: requested.length ? requested : [fields[0].field_name] });
+    const options = { pageSize: 500, pageToken, fieldNames: requested.length ? requested : [fields[0].field_name] };
+    const result = useSearch
+      ? await client.searchRecords!({ ...options, conditions })
+      : await client.listRecords(options);
     for (const record of result.items) {
       if (!query.filters.every(filter => matches(record, filter, fields.find(field => field.field_name === filter.field)!))) continue;
       count++;
@@ -159,5 +174,5 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
     pageTokens.add(result.pageToken);
     pageToken = result.pageToken;
   }
-  throw new BaseQueryError("Bảng vượt giới hạn quét 5.000 dòng; chưa có kết quả đầy đủ. Hãy dùng bảng nhỏ hơn hoặc tạo view/bảng tổng hợp.");
+  throw new BaseQueryError("Truy vấn vượt giới hạn đọc 5.000 dòng ứng viên; chưa có kết quả đầy đủ. Hãy thu hẹp bộ lọc lựa chọn đơn hoặc dùng bảng tổng hợp.");
 }
