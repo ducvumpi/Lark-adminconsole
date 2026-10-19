@@ -147,6 +147,16 @@ export class LarkBaseClient {
     return { Authorization: `Bearer ${token}` };
   }
 
+  async replyText(messageId: string, text: string, uuid: string): Promise<void> {
+    const headers = await this.authHeader();
+    const res = await this.http.post(`/im/v1/messages/${encodeURIComponent(messageId)}/reply`, {
+      msg_type: "text",
+      content: JSON.stringify({ text }),
+      uuid,
+    }, { headers, timeout: 15000 });
+    if (res.data.code !== 0) throw new LarkApiError(`Lark reply failed (${res.data.code})`);
+  }
+
   async uploadAttachment(fileName: string, fileBytes: Uint8Array): Promise<string> {
     const headers = await this.authHeader();
     const { apiBaseUrl, baseAppToken } = getConfig();

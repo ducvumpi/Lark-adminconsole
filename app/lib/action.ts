@@ -290,17 +290,14 @@ export async function importInvitationImagesAction(): Promise<ActionResult<Invit
     }
 
     for (const fileName of imageFiles) {
-      const separator = fileName.indexOf("_");
-      if (separator <= 0 || separator === fileName.length - 1) {
+      // Accept both legacy code_name and the code - name used by invitation exports.
+      const stem = path.basename(fileName, path.extname(fileName));
+      const match = stem.match(/^\s*(\d+)\s*[_\-–—]\s*\S.*$/u);
+      if (!match) {
         summary.unmatched.push(fileName);
         continue;
       }
-
-      const employeeCode = fileName.slice(0, separator);
-      if (!/^\d+$/.test(employeeCode)) {
-        summary.unmatched.push(fileName);
-        continue;
-      }
+      const employeeCode = match[1];
       const matchingRecords = recordsByEmployeeCode.get(normalizeEmployeeCode(employeeCode)) ?? [];
       if (matchingRecords.length === 0) {
         summary.unmatched.push(fileName);

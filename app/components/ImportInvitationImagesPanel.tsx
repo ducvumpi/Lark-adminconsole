@@ -29,7 +29,7 @@ export default function ImportInvitationImagesPanel() {
             <div>
                 <h4 className="font-semibold text-slate-100">Import ảnh Thư Mời</h4>
                 <p className="text-sm text-slate-400">
-                    Đọc ảnh trong C:\Users\Win10\Desktop\Thư mời; mã số trước dấu _ trong tên file sẽ được so khớp với cột Mã NV.
+                    Đọc ảnh trong C:\Users\Win10\Desktop\Thư mời; tên file dạng 10042 - Họ tên.jpg hoặc 10042_Họ tên.jpg sẽ được so khớp với cột Mã NV (bỏ qua số 0 ở đầu).
                 </p>
             </div>
 
