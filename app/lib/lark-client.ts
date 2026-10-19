@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { getConfig, isConfigComplete } from "./config";
+import { getConfig, isConfigComplete, type LarkConfig } from "./config";
 export interface LarkRecord {
   record_id: string; // bỏ dấu ? — Lark luôn trả về field này với record đã tồn tại
   fields: Record<string, unknown>;
@@ -9,7 +9,10 @@ export interface LarkField {
   field_id: string;
   field_name: string;
   type: number;
-  property?: { options?: { id?: string; name: string }[] } | null;
+  property?: {
+    options?: { id?: string; name: string }[];
+    type?: { data_type?: number; ui_type?: string; ui_property?: { options?: { id?: string; name: string }[] } };
+  } | null;
 }
 
 export interface ListRecordsResult {
@@ -120,9 +123,11 @@ export class LarkBaseClient {
   private http: AxiosInstance;
   private accessToken = "";
   private tokenExpiry = 0;
+  private readonly config: LarkConfig;
 
-  constructor(options?: { signal?: AbortSignal }) {
-    const { apiBaseUrl } = getConfig();
+  constructor(options?: { signal?: AbortSignal; config?: LarkConfig }) {
+    this.config = { ...(options?.config ?? getConfig()) };
+    const { apiBaseUrl } = this.config;
     this.http = axios.create({
       baseURL: apiBaseUrl,
       headers: { "Content-Type": "application/json" },
@@ -133,7 +138,7 @@ export class LarkBaseClient {
   private async getAccessToken(): Promise<string> {
     if (this.accessToken && Date.now() < this.tokenExpiry) return this.accessToken;
 
-    const { appId, appSecret } = getConfig();
+    const { appId, appSecret } = this.config;
     if (!appId || !appSecret) {
       throw new LarkApiError("Chưa cấu hình App ID / App Secret. Vào trang Cài đặt để nhập.", undefined, "app_credentials_missing");
     }
@@ -169,7 +174,7 @@ export class LarkBaseClient {
 
   async uploadAttachment(fileName: string, fileBytes: Uint8Array): Promise<string> {
     const headers = await this.authHeader();
-    const { apiBaseUrl, baseAppToken } = getConfig();
+    const { apiBaseUrl, baseAppToken } = this.config;
     const formData = new FormData();
     formData.set("file_name", fileName);
     formData.set("parent_type", "bitable_file");
@@ -193,7 +198,7 @@ export class LarkBaseClient {
   }
 
   private tablePath(suffix = "") {
-    const { baseAppToken, tableId } = getConfig();
+    const { baseAppToken, tableId } = this.config;
     if (!baseAppToken || !tableId) {
       throw new LarkApiError("Chưa cấu hình Base App Token / Table ID. Vào trang Cài đặt để nhập.", undefined, "base_table_missing");
     }
@@ -446,5 +451,5 @@ export function getLarkClient(): LarkBaseClient {
       "Chưa cấu hình đầy đủ  / App Secret / Base Token / Table ID. Vào trang Cài đặt để nhập."
     );
   }
-  return new LarkBaseClient();
+  return new LarkBaseClient({ config: cfg });
 }

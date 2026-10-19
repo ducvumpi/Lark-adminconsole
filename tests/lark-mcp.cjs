@@ -112,6 +112,10 @@ async function main() {
 
   const schema = resultText(await call("list_base_fields", {}));
   assert.deepEqual(schema.fields[0].options, ["Horus", "Other"]);
+  fields.push({ field_name: "Check cấp NS", type: 20, property: { type: { data_type: 3, ui_property: { options: [{ id: "opt_level_3", name: "Khoản chi cấp 3" }] } } } });
+  const computedSchema = resultText(await call("list_base_fields", {})).fields.find(field => field.name === "Check cấp NS");
+  assert.equal(computedSchema.resultType, 3);
+  assert.deepEqual(computedSchema.options, ["Khoản chi cấp 3"]);
   const sum = resultText(await call("query_base", {
     action: "sum", sumField: "Số tiền TGĐ duyệt",
     filters: [{ field: "Brand", operator: "equals", value: "Horus" }, { field: "Năm", operator: "equals", value: "2026" }],

@@ -149,6 +149,37 @@ async function main() {
   await queryBase(ambiguousClient, ambiguous, { action: "count", sumField: null, columns: [], filters: [selectedQuery.filters[0]] });
   assert.equal(ambiguousClient.requests.length, 1);
 
+  const levelFields = [
+    { field_name: "Check cấp NS", type: 20, property: { type: { data_type: 3, ui_property: { options: [
+      { id: "opt_level_2", name: "Khoản chi cấp 2" }, { id: "opt_level_3", name: "Khoản chi cấp 3" },
+    ] } } } },
+    { field_name: "Số tiền", type: 2 },
+  ];
+  const levelRows = [
+    { record_id: "level3-a", fields: { "Check cấp NS": ["opt_level_3"], "Số tiền": 100 } },
+    { record_id: "level2", fields: { "Check cấp NS": ["opt_level_2"], "Số tiền": 500 } },
+    { record_id: "level3-b", fields: { "Check cấp NS": { type: 3, value: ["opt_level_3"] }, "Số tiền": 200 } },
+  ];
+  const levelFilters = [{ field: "Check cấp NS", operator: "equals", value: "Khoản chi cấp 3" }];
+  const levelCalls = [];
+  const levelClient = {
+    listRecords: async () => { throw new Error("Must filter formula choice on Base"); },
+    searchRecords: async options => { levelCalls.push(options); return { items: levelRows, hasMore: false }; },
+  };
+  const levelCount = await queryBase(levelClient, levelFields, { action: "count", sumField: null, columns: [], filters: levelFilters });
+  assert.equal(levelCount.count, 2);
+  assert.equal(levelCalls[0].conditions[0].value[0], "Khoản chi cấp 3");
+  const levelSum = await queryBase(levelClient, levelFields, { action: "sum", sumField: "Số tiền", columns: [], filters: levelFilters });
+  assert.equal(levelSum.sum, 300);
+  const levelList = await queryBase(levelClient, levelFields, { action: "list", sumField: null, columns: ["Check cấp NS"], filters: levelFilters });
+  assert.equal(levelList.rows[0].fields["Check cấp NS"], "Khoản chi cấp 3");
+  assert.equal(levelList.rows[1].fields["Check cấp NS"], "Khoản chi cấp 3");
+  const levelReport = await queryBase(levelClient, levelFields, { action: "report", sumField: "Số tiền", groupBy: ["Check cấp NS"], columns: [], filters: levelFilters });
+  assert.equal(levelReport.groups.length, 1);
+  assert.equal(levelReport.groups[0].values[0], "Khoản chi cấp 3");
+  assert.equal(levelReport.groups[0].sum, 300);
+  await assert.rejects(queryBase(levelClient, levelFields, { action: "sum", sumField: "Check cấp NS", columns: [], filters: [] }), /cột số/);
+
   const env = { OPENAI_API_KEY: "fake-key-for-offline-test", OPENAI_MODEL: "test-model" };
   const { answerWithOpenAI } = load("app/lib/lark-openai.ts", {
     process: { env }, console: { error() {} },

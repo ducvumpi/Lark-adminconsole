@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { FIELD_TYPE_LABEL, LarkBaseClient } from "./lark-client";
-import { BaseQueryError, queryBase, type BaseReader } from "./lark-ai-query";
+import { BaseQueryError, getFieldOptions, getFieldResultType, queryBase, type BaseReader } from "./lark-ai-query";
 import { larkErrorCodes } from "./lark-bot";
 import { formatBudgetReport } from "./lark-budget-report";
 
@@ -175,7 +175,8 @@ export async function handleMcp(request: Request, dependencies?: Dependencies): 
           console.info("Lark MCP: tool completed", { tool: params.name, elapsedMs: Date.now() - started });
           return result(toolResult({ fields: fields.map(field => ({
             name: field.field_name, type: field.type, label: FIELD_TYPE_LABEL[field.type] ?? "Khác",
-            ...(field.property?.options ? { options: field.property.options.map(option => option.name) } : {}),
+            resultType: getFieldResultType(field),
+            ...(getFieldOptions(field).length ? { options: getFieldOptions(field).map(option => option.name) } : {}),
           })) }));
         }
         stage = "query_records";

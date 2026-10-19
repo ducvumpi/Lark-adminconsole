@@ -37,7 +37,7 @@ function display(value: unknown): string {
     const isRichText = value.every(part => object(part) && typeof part.text === "string");
     return value.map(display).join(isRichText ? "" : ", ");
   }
-  if (object(value)) return display(value.text ?? value.name ?? value.link ?? "");
+  if (object(value)) return display(value.text ?? value.name ?? value.link ?? value.value ?? "");
   return String(value);
 }
 
@@ -51,6 +51,32 @@ function numeric(value: unknown): number | null {
 const NUMERIC_TYPES = [2, 19, 20];
 const COMPUTED_TYPES = [19, 20];
 const TEXT_TYPES = [1, 3, 4, 13, 15];
+
+export function getFieldOptions(field: LarkField) {
+  return field.property?.options?.length ? field.property.options : field.property?.type?.ui_property?.options ?? [];
+}
+
+export function getFieldResultType(field: LarkField): number {
+  return COMPUTED_TYPES.includes(field.type) ? field.property?.type?.data_type ?? field.type : field.type;
+}
+
+function resolveOptionNames(field: LarkField, value: unknown): unknown {
+  const options = getFieldOptions(field);
+  if (!options.length) return value;
+  const names = new Map(options.filter(option => typeof option.id === "string").map(option => [option.id, option.name]));
+  const resolve = (entry: unknown, depth = 0): unknown => {
+    if (depth > 8) throw new BaseQueryError(`Cột “${field.field_name}” có cấu trúc lựa chọn quá sâu.`);
+    if (typeof entry === "string") return names.get(entry) ?? entry;
+    if (Array.isArray(entry)) return entry.map(item => resolve(item, depth + 1));
+    if (object(entry)) return {
+      ...entry,
+      ...("value" in entry ? { value: resolve(entry.value, depth + 1) } : {}),
+      ...(typeof entry.text === "string" ? { text: resolve(entry.text, depth + 1) } : {}),
+    };
+    return entry;
+  };
+  return resolve(value);
+}
 
 // Formula/lookup columns can return text, numbers, or wrapped scalar values.
 // A multi-value lookup is ambiguous for aggregation: never silently add it up.
@@ -80,7 +106,7 @@ function validateQuery(input: unknown, fields: LarkField[]): Query {
   for (const name of input.columns) if (typeof name !== "string" || !findField(name)) throw new BaseQueryError("Tên cột hiển thị không hợp lệ.");
   if (input.action === "sum" || input.action === "report") {
     const field = findField(input.sumField);
-    if (!field || !NUMERIC_TYPES.includes(field.type)) throw new BaseQueryError("Cần chọn đúng cột số để tính tổng.");
+    if (!field || !NUMERIC_TYPES.includes(field.type) || !NUMERIC_TYPES.includes(getFieldResultType(field))) throw new BaseQueryError("Cần chọn đúng cột số để tính tổng.");
   } else if (input.sumField !== null) throw new BaseQueryError("sumField phải là null khi không tính tổng.");
   if (input.action === "report") {
     if (!Array.isArray(input.groupBy) || input.groupBy.length < 1 || input.groupBy.length > 2
@@ -119,7 +145,8 @@ function validateQuery(input: unknown, fields: LarkField[]): Query {
 
 function matches(record: LarkRecord, filter: Condition, field: LarkField) {
   const isComputed = COMPUTED_TYPES.includes(field.type);
-  const raw = isComputed ? computedScalar(record.fields[filter.field], field.field_name) : record.fields[filter.field];
+  const decoded = resolveOptionNames(field, record.fields[filter.field]);
+  const raw = isComputed ? computedScalar(decoded, field.field_name) : decoded;
   const computedNumericComparison = isComputed && (
     !["equals", "contains"].includes(filter.operator) || (filter.operator === "equals" && typeof raw === "number" && numeric(filter.value) !== null));
   if (field.type === 2 || [5, 1002, 1004].includes(field.type) || computedNumericComparison) {
@@ -156,15 +183,16 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
     ...(query.action === "report" ? query.groupBy! : []),
   ])];
   const sumField = fields.find(field => field.field_name === query.sumField);
-  // Push down exact single-select filters, resolving the canonical option name
+  // Push down exact single-select filters (including formula select results),
+  // resolving the canonical option name
   // so case-insensitive matching remains unchanged. Other types stay local:
   // formula/text/date API semantics can differ from our scalar comparisons.
   const conditions: LarkSearchCondition[] = [];
   for (const filter of query.filters) {
     const field = fields.find(field => field.field_name === filter.field)!;
-    if (field.type !== 3 || filter.operator !== "equals" || !filter.value.trim()) continue;
+    if (getFieldResultType(field) !== 3 || filter.operator !== "equals" || !filter.value.trim()) continue;
     const normalize = (value: string) => value.normalize("NFC").toLocaleLowerCase("vi").trim();
-    const options = field.property?.options?.filter(option => normalize(option.name) === normalize(filter.value));
+    const options = getFieldOptions(field).filter(option => normalize(option.name) === normalize(filter.value));
     if (options?.length === 1) conditions.push({ field_name: field.field_name, operator: "is", value: [options[0].name] });
   }
   const useSearch = conditions.length > 0 && Boolean(client.searchRecords);
@@ -204,7 +232,8 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
       if (query.action === "report") {
         const values = query.groupBy!.map(name => {
           const field = fields.find(field => field.field_name === name)!;
-          const raw = COMPUTED_TYPES.includes(field.type) ? computedScalar(record.fields[name], name) : record.fields[name];
+          const decoded = resolveOptionNames(field, record.fields[name]);
+          const raw = COMPUTED_TYPES.includes(field.type) ? computedScalar(decoded, name) : decoded;
           return display(raw).normalize("NFC").trim();
         });
         const key = JSON.stringify(values);
@@ -226,7 +255,10 @@ export async function queryBase(client: BaseReader, fields: LarkField[], input: 
       }
       if (query.action === "list") {
         if (rows.length === limit) return { action: "list", rows, hasMore: true, limit, valuesTruncatedAt: 300 };
-        rows.push({ recordId: record.record_id, fields: Object.fromEntries(selected.map(name => [name, display(record.fields[name]).slice(0, 300)])) });
+        rows.push({ recordId: record.record_id, fields: Object.fromEntries(selected.map(name => {
+          const field = fields.find(field => field.field_name === name)!;
+          return [name, display(resolveOptionNames(field, record.fields[name])).slice(0, 300)];
+        })) });
       }
     }
     if (!result.hasMore) {

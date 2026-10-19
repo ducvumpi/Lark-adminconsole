@@ -132,3 +132,22 @@ Code tính tổng, số bản ghi, số nhóm, số ô tiền trống và tổng
 Mặc định hiển thị 10 nhóm, `limit` tối đa 30. Nhóm sắp theo tổng giảm dần; nhóm còn lại gộp trong dòng **Khác** và ghi rõ số nhóm. Tổng phía đầu báo cáo luôn gồm tất cả nhóm. Số hiển thị định dạng tiếng Việt, làm tròn tối đa 2 chữ số thập phân, đơn vị theo cột nguồn. `reportText` chứa bảng văn bản trong khối code để đọc được cả khi ứng dụng không hỗ trợ bảng Markdown; đây không phải thẻ Card JSON tương tác.
 
 Kiểm thử: `node tests/lark-budget-report.cjs` và `node tests/lark-mcp.cjs`. Kiểm tra nhóm qua nhiều trang, công thức bọc giá trị, ô trống, số âm, dòng Khác, lọc, giới hạn và định dạng. Chưa kiểm tra gửi thực tế từ workflow Lark; sau deploy cần thử trong chat.
+
+## Lọc riêng khoản chi cấp 3
+
+Một số cột công thức như **Check cấp NS** trả ID lựa chọn (`opt...`) thay vì nhãn hiển thị. Code đọc metadata `property.type.ui_property.options`, ánh xạ ID về tên trước khi lọc, liệt kê và nhóm báo cáo. `list_base_fields` cũng trả các tên lựa chọn của cột công thức và `resultType`; không cần người dùng nhập option ID. Công thức trả lựa chọn đơn hỗ trợ đẩy bộ lọc equals trực tiếp sang API search của Base.
+
+Tham số mẫu:
+
+```json
+{
+  "action": "list",
+  "filters": [{ "field": "Check cấp NS", "operator": "equals", "value": "Khoản chi cấp 3" }],
+  "columns": ["Check cấp NS", "Brand", "Mã ngân sách"],
+  "limit": 100
+}
+```
+
+Trong Tin nhắn hệ thống có thể thêm: `Khi người dùng yêu cầu khoản chi cấp 3, nếu schema có Check cấp NS và lựa chọn Khoản chi cấp 3, lọc đúng cột đó bằng equals. Không tự đổi sang cột Kiểm tra cấp NS, Cấp ngân sách hoặc Loại ngân sách.` Có thể kết hợp thêm Brand/Năm/Quý/Tháng khi các cột tồn tại. Công cụ dùng chính xác tên lựa chọn, không tự đổi giá trị `3` thành `Khoản chi cấp 3` nếu chưa đọc metadata.
+
+Mỗi LarkBaseClient giữ một bản chụp cấu hình trong suốt truy vấn để việc đổi bảng trên admin console không khiến bước đọc cột và bước đọc bản ghi trỏ sang hai bảng khác nhau. Truy vấn tiếp theo dùng cấu hình mới. Kiểm thử: `node tests/lark-client-config.cjs` cùng các bộ test MCP/query hiện có.
