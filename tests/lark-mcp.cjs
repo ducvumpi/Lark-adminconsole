@@ -13,12 +13,14 @@ function load(file, extra = {}) {
   return context.exports;
 }
 const query = load("app/lib/lark-ai-query.ts");
+const bot = load("app/lib/lark-bot.ts");
 const env = { LARK_MCP_TOKEN: "offline-test-token" };
 const logs = [];
 const { handleMcp } = load("app/lib/lark-mcp.ts", {
   process: { env }, console: { error: (...args) => logs.push(args) },
   require: name => {
     if (name === "./lark-ai-query") return query;
+    if (name === "./lark-bot") return bot;
     if (name === "./lark-client") return { FIELD_TYPE_LABEL: { 1: "Văn bản", 2: "Số", 3: "Lựa chọn đơn" } };
     return require(name);
   },
@@ -36,11 +38,12 @@ const rows = [
 let constructions = 0;
 let reads = 0;
 let transportError = false;
+let fakeError;
 const dependencies = { createClient: () => {
   constructions++;
   return {
     listFields: async () => {
-      if (transportError) throw { response: { data: { secret: "DO_NOT_EXPOSE" } }, config: { Authorization: "DO_NOT_EXPOSE" } };
+      if (transportError) throw fakeError ?? { response: { data: { secret: "DO_NOT_EXPOSE" } }, config: { Authorization: "DO_NOT_EXPOSE" } };
       return fields;
     },
     listRecords: async () => { reads++; return { items: rows, hasMore: false }; },
@@ -131,6 +134,20 @@ async function main() {
   const failure = await call("list_base_fields", {});
   assert.equal(failure.result.isError, true);
   assert.ok(!JSON.stringify(failure).includes("DO_NOT_EXPOSE"));
+  assert.ok(!JSON.stringify(logs).includes("DO_NOT_EXPOSE"));
+  fakeError = { response: { status: 403, data: { code: 99991672, secret: "DO_NOT_EXPOSE" } } };
+  const denied = await call("list_base_fields", {});
+  assert.match(denied.result.content[0].text, /99991672/);
+  assert.equal(logs[logs.length - 1][1].apiCode, 99991672);
+  assert.equal(logs[logs.length - 1][1].stage, "list_fields");
+  assert.equal(logs[logs.length - 1][1].deadlineExceeded, false);
+  fakeError = { reason: "app_credentials_missing", message: "DO_NOT_EXPOSE" };
+  assert.match((await call("list_base_fields", {})).result.content[0].text, /App ID\/App Secret/);
+  fakeError = { reason: "base_table_missing" };
+  assert.match((await call("list_base_fields", {})).result.content[0].text, /Base App Token\/Table ID/);
+  fakeError = { code: "ECONNABORTED" };
+  assert.match((await call("list_base_fields", {})).result.content[0].text, /quá thời gian/);
+  assert.equal(logs[logs.length - 1][1].networkCode, "ECONNABORTED");
   assert.ok(!JSON.stringify(logs).includes("DO_NOT_EXPOSE"));
   console.log("Lark MCP checks passed (offline, no API calls)");
 }

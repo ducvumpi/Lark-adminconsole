@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { FIELD_TYPE_LABEL, LarkBaseClient } from "./lark-client";
 import { BaseQueryError, queryBase, type BaseReader } from "./lark-ai-query";
+import { larkErrorCodes } from "./lark-bot";
 
 const VERSIONS = ["2025-03-26", "2025-06-18", "2025-11-25"];
 const LATEST_VERSION = VERSIONS[VERSIONS.length - 1];
@@ -139,9 +140,13 @@ export async function handleMcp(request: Request, dependencies?: Dependencies): 
       const args = object(params.arguments) ? params.arguments : {};
       if (params.name === "list_base_fields" && Object.keys(args).length) return rpcError(id, -32602, "list_base_fields takes no arguments");
       if (params.name === "query_base" && Object.keys(args).some(key => !["action", "filters", "sumField", "columns"].includes(key))) return rpcError(id, -32602, "Unknown query argument");
-      const signal = AbortSignal.any([request.signal, AbortSignal.timeout(40000)]);
+      const started = Date.now();
+      const deadline = AbortSignal.timeout(40000);
+      const signal = AbortSignal.any([request.signal, deadline]);
+      let stage = "create_client";
       try {
         const client = dependencies?.createClient?.(signal) ?? new LarkBaseClient({ signal });
+        stage = "list_fields";
         const fields = await client.listFields();
         if (!fields.length) return result(toolResult("Bảng Base đang chọn chưa có cột để tra cứu.", true));
         if (params.name === "list_base_fields") {
@@ -150,12 +155,23 @@ export async function handleMcp(request: Request, dependencies?: Dependencies): 
             ...(field.property?.options ? { options: field.property.options.map(option => option.name) } : {}),
           })) }));
         }
+        stage = "query_records";
         const output = await queryBase(client, fields, { filters: [], sumField: null, columns: [], ...args }, signal);
         return result(toolResult(output));
       } catch (error) {
         if (error instanceof BaseQueryError) return result(toolResult(error.message, true));
-        console.error("Lark MCP: Base read failed or timed out");
-        return result(toolResult("Chưa đọc được Base hoặc đã quá thời gian xử lý. Kiểm tra cấu hình, quyền ứng dụng và bảng đang chọn. Không có kết quả đầy đủ.", true));
+        const codes = larkErrorCodes(error);
+        console.error("Lark MCP: Base read failed or timed out", {
+          tool: params.name, stage, ...codes, elapsedMs: Date.now() - started,
+          deadlineExceeded: deadline.aborted, clientDisconnected: request.signal.aborted,
+        });
+        let explanation = "Chưa đọc được Base. Kiểm tra quyền ứng dụng và Base/bảng đang chọn trong admin console trên máy chủ.";
+        if (codes.reason === "app_credentials_missing") explanation = "Máy chủ MCP chưa có App ID/App Secret của ứng dụng đọc Base. Cấu hình trong admin console hoặc biến môi trường Vercel.";
+        else if (codes.reason === "base_table_missing") explanation = "Máy chủ MCP chưa có Base App Token/Table ID. Chọn đúng Base và bảng trong admin console trên máy chủ.";
+        else if (deadline.aborted || codes.networkCode === "ETIMEDOUT" || codes.networkCode === "ECONNABORTED") explanation = "Đọc Base đã quá thời gian xử lý. Chưa có kết quả đầy đủ; vui lòng thử lại.";
+        else if (request.signal.aborted) explanation = "Kết nối gọi MCP đã bị đóng trước khi đọc Base xong. Kiểm tra thời gian chờ của công cụ trong workflow.";
+        const reference = codes.apiCode !== undefined ? ` Mã lỗi Lark: ${codes.apiCode}.` : codes.httpStatus !== undefined ? ` HTTP: ${codes.httpStatus}.` : "";
+        return result(toolResult(explanation + reference, true));
       }
     }
     default: return rpcError(id, -32601, "Method not found");

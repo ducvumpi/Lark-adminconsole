@@ -49,12 +49,13 @@ export function normalizeBotText(text: string, mentions: unknown): string {
 // Do not log whole Axios errors: they can contain Authorization/App Secret.
 export function larkErrorCodes(error: unknown) {
   if (!error || typeof error !== "object") return {};
-  const candidate = error as { apiCode?: unknown; code?: unknown; response?: { status?: unknown; data?: { code?: unknown } } };
+  const candidate = error as { apiCode?: unknown; code?: unknown; reason?: unknown; response?: { status?: unknown; data?: { code?: unknown } } };
   const apiCode = candidate.apiCode ?? candidate.response?.data?.code;
   return {
     ...(typeof apiCode === "number" ? { apiCode } : {}),
     ...(typeof candidate.response?.status === "number" ? { httpStatus: candidate.response.status } : {}),
-    ...(["ECONNABORTED", "ETIMEDOUT", "ERR_CANCELED", "ENOTFOUND", "ECONNRESET"].includes(String(candidate.code)) ? { networkCode: candidate.code } : {}),
+    ...(["app_credentials_missing", "base_table_missing"].includes(String(candidate.reason)) ? { reason: candidate.reason } : {}),
+    ...(["ECONNABORTED", "ETIMEDOUT", "ERR_CANCELED", "ENOTFOUND", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "EACCES", "EPERM", "ERR_NETWORK", "ERR_INVALID_URL"].includes(String(candidate.code)) ? { networkCode: candidate.code } : {}),
   };
 }
 

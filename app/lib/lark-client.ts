@@ -42,7 +42,8 @@ export const FIELD_TYPE_LABEL: Record<number, string> = {
 };
 
 class LarkApiError extends Error {
-  constructor(message: string, readonly apiCode?: number) { super(message); }
+  constructor(message: string, readonly apiCode?: number,
+    readonly reason?: "app_credentials_missing" | "base_table_missing") { super(message); }
 }
 /** Hàm dọn dẹp và chuẩn hóa dữ liệu để tránh lỗi TextFieldConvFail */
 // // type: kiểu field thật lấy từ listFields() — 2 = Số, còn lại mặc định coi là Văn bản
@@ -128,7 +129,7 @@ export class LarkBaseClient {
 
     const { appId, appSecret } = getConfig();
     if (!appId || !appSecret) {
-      throw new LarkApiError("Chưa cấu hình App ID / App Secret. Vào trang Cài đặt để nhập.");
+      throw new LarkApiError("Chưa cấu hình App ID / App Secret. Vào trang Cài đặt để nhập.", undefined, "app_credentials_missing");
     }
 
     const res = await this.http.post("/auth/v3/tenant_access_token/internal", {
@@ -188,7 +189,7 @@ export class LarkBaseClient {
   private tablePath(suffix = "") {
     const { baseAppToken, tableId } = getConfig();
     if (!baseAppToken || !tableId) {
-      throw new LarkApiError("Chưa cấu hình Base App Token / Table ID. Vào trang Cài đặt để nhập.");
+      throw new LarkApiError("Chưa cấu hình Base App Token / Table ID. Vào trang Cài đặt để nhập.", undefined, "base_table_missing");
     }
     return `/bitable/v1/apps/${baseAppToken}/tables/${tableId}${suffix}`;
   }
@@ -205,7 +206,7 @@ export class LarkBaseClient {
 
       const res = await this.http.get<any>(this.tablePath("/fields"), { headers, params });
       if (res.data.code !== 0) {
-        throw new LarkApiError(`Lấy danh sách field lỗi (code ${res.data.code}): ${res.data.msg}`);
+        throw new LarkApiError(`Lấy danh sách field lỗi (code ${res.data.code}): ${res.data.msg}`, res.data.code);
       }
 
       const d = res.data.data;
