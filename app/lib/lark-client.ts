@@ -213,8 +213,6 @@ export class LarkBaseClient {
       pageToken = d.has_more ? d.page_token : undefined;
     } while (pageToken);
 
-    console.dir(allFields, { depth: null });
-
     return allFields;
   }
 
