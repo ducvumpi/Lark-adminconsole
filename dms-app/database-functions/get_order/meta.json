@@ -1,0 +1,14 @@
+{
+  "name": "Chi tiết đơn hàng",
+  "description": "Chi tiết đơn hàng. Chỉ đọc dữ liệu DMS của nhóm vận hành được cấp quyền truy cập ứng dụng.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "description": "ID đơn hàng lấy từ list_orders",
+        "nullable": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Tên kho" AS name, "Mã kho" AS code, "Địa chỉ" AS address, "Người phụ trách" AS manager FROM "DMS - Kho" WHERE rec_id = $1 LIMIT 1

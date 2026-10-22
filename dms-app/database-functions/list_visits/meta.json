@@ -1,0 +1,16 @@
+{
+  "name": "Danh sách lượt ghé đại lý",
+  "description": "Tra cứu các lượt check-in GPS tại đại lý được đội vận hành ghi nhận; không dùng để theo dõi vị trí liên tục.",
+  "meta": {
+    "params": [
+      {
+        "name": "offset",
+        "kind": "INT",
+        "description": "Số lượt ghé bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+        "nullable": false,
+        "minimum": 0,
+        "maximum": 1000000
+      }
+    ]
+  }
+}

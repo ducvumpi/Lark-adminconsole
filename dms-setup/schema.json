@@ -1,0 +1,247 @@
+{
+  "tables": [
+    {
+      "name": "DMS - Đối tác",
+      "fields": [
+        {
+          "name": "Tên đối tác",
+          "type": "text"
+        },
+        {
+          "name": "Mã đối tác",
+          "type": "text"
+        },
+        {
+          "name": "Loại",
+          "type": "select",
+          "multiple": false,
+          "options": [
+            {
+              "name": "Nhà phân phối"
+            },
+            {
+              "name": "Đại lý"
+            }
+          ]
+        },
+        {
+          "name": "Khu vực",
+          "type": "text"
+        },
+        {
+          "name": "Điện thoại",
+          "type": "text"
+        },
+        {
+          "name": "Địa chỉ",
+          "type": "text"
+        },
+        {
+          "name": "Trạng thái",
+          "type": "select",
+          "multiple": false,
+          "options": [
+            {
+              "name": "Hoạt động"
+            },
+            {
+              "name": "Tạm ngưng"
+            }
+          ]
+        },
+        {
+          "name": "Ghi chú",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "DMS - Sản phẩm",
+      "fields": [
+        {
+          "name": "Tên sản phẩm",
+          "type": "text"
+        },
+        {
+          "name": "SKU",
+          "type": "text"
+        },
+        {
+          "name": "Đơn vị",
+          "type": "text"
+        },
+        {
+          "name": "Nhóm hàng",
+          "type": "text"
+        },
+        {
+          "name": "Giá bán",
+          "type": "number",
+          "style": {
+            "type": "plain",
+            "precision": 0
+          }
+        },
+        {
+          "name": "Tồn tối thiểu",
+          "type": "number",
+          "style": {
+            "type": "plain",
+            "precision": 0
+          }
+        },
+        {
+          "name": "Trạng thái",
+          "type": "select",
+          "multiple": false,
+          "options": [
+            {
+              "name": "Đang bán"
+            },
+            {
+              "name": "Ngừng bán"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DMS - Kho",
+      "fields": [
+        {
+          "name": "Tên kho",
+          "type": "text"
+        },
+        {
+          "name": "Mã kho",
+          "type": "text"
+        },
+        {
+          "name": "Địa chỉ",
+          "type": "text"
+        },
+        {
+          "name": "Người phụ trách",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "DMS - Đơn hàng",
+      "fields": [
+        {
+          "name": "Mã đơn",
+          "type": "text"
+        },
+        {
+          "name": "Đối tác ID",
+          "type": "text"
+        },
+        {
+          "name": "Kho ID",
+          "type": "text"
+        },
+        {
+          "name": "Ngày đặt",
+          "type": "text"
+        },
+        {
+          "name": "Trạng thái",
+          "type": "select",
+          "multiple": false,
+          "options": [
+            {
+              "name": "Nháp"
+            },
+            {
+              "name": "Đã xác nhận"
+            },
+            {
+              "name": "Đang giao"
+            },
+            {
+              "name": "Hoàn tất"
+            },
+            {
+              "name": "Đã hủy"
+            }
+          ]
+        },
+        {
+          "name": "Chi tiết JSON",
+          "type": "text"
+        },
+        {
+          "name": "Tổng tiền",
+          "type": "number",
+          "style": {
+            "type": "plain",
+            "precision": 0
+          }
+        },
+        {
+          "name": "Đã thu",
+          "type": "number",
+          "style": {
+            "type": "plain",
+            "precision": 0
+          }
+        },
+        {
+          "name": "Ghi chú",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "name": "DMS - Sổ kho",
+      "fields": [
+        {
+          "name": "Mã phiếu",
+          "type": "text"
+        },
+        {
+          "name": "Sản phẩm ID",
+          "type": "text"
+        },
+        {
+          "name": "Kho ID",
+          "type": "text"
+        },
+        {
+          "name": "Loại phiếu",
+          "type": "select",
+          "multiple": false,
+          "options": [
+            {
+              "name": "Nhập kho"
+            },
+            {
+              "name": "Xuất kho"
+            }
+          ]
+        },
+        {
+          "name": "Số lượng",
+          "type": "number",
+          "style": {
+            "type": "plain",
+            "precision": 0
+          }
+        },
+        {
+          "name": "Ngày ghi nhận",
+          "type": "text"
+        },
+        {
+          "name": "Tham chiếu",
+          "type": "text"
+        },
+        {
+          "name": "Ghi chú",
+          "type": "text"
+        }
+      ]
+    }
+  ]
+}

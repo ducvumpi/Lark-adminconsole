@@ -1,0 +1,14 @@
+{
+  "name": "Đối tác của đơn hàng",
+  "description": "Đối tác của đơn hàng. Chỉ đọc dữ liệu DMS của nhóm vận hành được cấp quyền truy cập ứng dụng.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "description": "ID đối tác lấy từ list_partners",
+        "nullable": false
+      }
+    ]
+  }
+}

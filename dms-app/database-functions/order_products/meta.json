@@ -1,0 +1,14 @@
+{
+  "name": "Giá sản phẩm cho đơn hàng",
+  "description": "Giá sản phẩm cho đơn hàng. Chỉ đọc dữ liệu DMS của nhóm vận hành được cấp quyền truy cập ứng dụng.",
+  "meta": {
+    "params": [
+      {
+        "name": "ids",
+        "kind": "TEXT[]",
+        "description": "ID các sản phẩm lấy từ list_products, tối đa 50",
+        "nullable": false
+      }
+    ]
+  }
+}

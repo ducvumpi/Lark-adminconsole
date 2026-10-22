@@ -1,0 +1,84 @@
+{
+  "name": "Lưu kho",
+  "description": "Lưu kho cho nhóm vận hành nội bộ. Sau lỗi kết quả chưa xác định, đọc lại danh sách trước khi gửi lại.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "recordId": {
+        "description": "ID kho khi sửa; bỏ trống khi tạo",
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "Tên kho"
+      },
+      "code": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Mã kho"
+      },
+      "address": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Địa chỉ kho"
+      },
+      "manager": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Người phụ trách"
+      }
+    },
+    "required": [
+      "name",
+      "code",
+      "address",
+      "manager"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "recordIds"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.5.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:0ad3b1d4eeba9bc7bcf5323e53fbcb7d3663b1e98e75af910da41e9e91aa993e",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

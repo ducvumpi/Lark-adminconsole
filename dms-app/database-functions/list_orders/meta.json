@@ -1,0 +1,16 @@
+{
+  "name": "Danh sách DMS - Đơn hàng",
+  "description": "Danh sách DMS - Đơn hàng. Chỉ đọc dữ liệu DMS của nhóm vận hành được cấp quyền truy cập ứng dụng.",
+  "meta": {
+    "params": [
+      {
+        "name": "offset",
+        "kind": "INT",
+        "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+        "nullable": false,
+        "minimum": 0,
+        "maximum": 1000000
+      }
+    ]
+  }
+}

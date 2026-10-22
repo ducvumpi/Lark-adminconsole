@@ -1,0 +1,114 @@
+{
+  "name": "Lưu đối tác",
+  "description": "Lưu đối tác cho nhóm vận hành nội bộ. Sau lỗi kết quả chưa xác định, đọc lại danh sách trước khi gửi lại.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "recordId": {
+        "description": "ID đối tác khi sửa; bỏ trống khi tạo",
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "Tên đối tác"
+      },
+      "code": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Mã đối tác"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "Nhà phân phối",
+          "Đại lý"
+        ],
+        "description": "Loại đối tác"
+      },
+      "region": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Khu vực"
+      },
+      "phone": {
+        "type": "string",
+        "maxLength": 50,
+        "description": "Điện thoại"
+      },
+      "address": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Địa chỉ"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Hoạt động",
+          "Tạm ngưng"
+        ],
+        "description": "Trạng thái"
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 2000,
+        "description": "Ghi chú"
+      }
+    },
+    "required": [
+      "name",
+      "code",
+      "type",
+      "region",
+      "phone",
+      "address",
+      "status",
+      "notes"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "recordIds"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.5.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:d6a024d396d5b341206b10f390690c382426daadb13d4ed6d1f5a789e2a7ace0",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

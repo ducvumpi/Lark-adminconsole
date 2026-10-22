@@ -1,0 +1,1612 @@
+{
+  "contractFormatVersion": 1,
+  "layout": "workspace",
+  "schemaHash": "sha256:08eb72ed38e7c21403f40b8e6df4ee92d2745d10db36dd9f017feb5492fd978d",
+  "functions": [
+    {
+      "functionId": "get_order",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đơn hàng lấy từ list_orders"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_movements",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_orders",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_partners",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_products",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_visits",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số lượt ghé bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_warehouses",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "order_partner",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đối tác lấy từ list_partners"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "order_products",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "ID các sản phẩm lấy từ list_products, tối đa 50"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "order_warehouse",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID kho lấy từ list_warehouses"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "visit_partner",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID bản ghi đại lý lấy từ danh sách đối tác"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "create_movement",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "ID sản phẩm từ list_products"
+          },
+          "warehouseId": {
+            "type": "string",
+            "description": "ID kho từ list_warehouses"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Nhập kho",
+              "Xuất kho"
+            ],
+            "description": "Loại phiếu kho"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000,
+            "description": "Số lượng dương trên phiếu"
+          },
+          "date": {
+            "type": "string",
+            "description": "Ngày phiếu YYYY-MM-DD"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Mã đơn hàng hoặc chứng từ tham chiếu"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú phiếu"
+          }
+        },
+        "required": [
+          "productId",
+          "warehouseId",
+          "type",
+          "quantity",
+          "date",
+          "reference",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:3d8abaaf3467c3e6df6cffe774f69fc0e47240a9f20a61ec22e235faba181958",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "create_order",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "description": "ID đối tác từ list_partners"
+          },
+          "warehouseId": {
+            "type": "string",
+            "description": "ID kho từ list_warehouses"
+          },
+          "date": {
+            "type": "string",
+            "description": "Ngày đặt hàng theo giờ Việt Nam YYYY-MM-DD"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú đơn hàng"
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": {
+                  "type": "string",
+                  "description": "ID sản phẩm từ list_products"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000,
+                  "description": "Số lượng đặt"
+                }
+              },
+              "required": [
+                "productId",
+                "quantity"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Chi tiết sản phẩm và số lượng, không gửi giá từ trình duyệt"
+          }
+        },
+        "required": [
+          "partnerId",
+          "warehouseId",
+          "date",
+          "notes",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:ba31cad88836ebc74709a7874927a75ea3a695eac6f41861dfbfb97ab5f0389e",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "create_visit",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "description": "ID đại lý từ list_partners"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Vĩ độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Kinh độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+          },
+          "accuracy": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Độ chính xác GPS do trình duyệt cung cấp, đơn vị mét"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú không bắt buộc về lượt ghé; gửi chuỗi rỗng nếu không có"
+          }
+        },
+        "required": [
+          "partnerId",
+          "latitude",
+          "longitude",
+          "accuracy",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:1a998da8224db87a429092282928bee7fbd0351eca2a5037a24064773855e2dd",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "save_partners",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID đối tác khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên đối tác"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã đối tác"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Nhà phân phối",
+              "Đại lý"
+            ],
+            "description": "Loại đối tác"
+          },
+          "region": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Khu vực"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Điện thoại"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Địa chỉ"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Hoạt động",
+              "Tạm ngưng"
+            ],
+            "description": "Trạng thái"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú"
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "type",
+          "region",
+          "phone",
+          "address",
+          "status",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:d6a024d396d5b341206b10f390690c382426daadb13d4ed6d1f5a789e2a7ace0",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "save_products",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID sản phẩm khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên sản phẩm"
+          },
+          "sku": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã SKU"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Đơn vị tính"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Nhóm hàng"
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Giá bán VND"
+          },
+          "minimum": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Mức tồn tối thiểu"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Đang bán",
+              "Ngừng bán"
+            ],
+            "description": "Trạng thái sản phẩm"
+          }
+        },
+        "required": [
+          "name",
+          "sku",
+          "unit",
+          "category",
+          "price",
+          "minimum",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:045830d3fb55b415565eb3d0f62997d9cce842bf51f3132a8d29806aa735f282",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "save_warehouses",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID kho khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên kho"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã kho"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Địa chỉ kho"
+          },
+          "manager": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Người phụ trách"
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "address",
+          "manager"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:0ad3b1d4eeba9bc7bcf5323e53fbcb7d3663b1e98e75af910da41e9e91aa993e",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "update_order",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đơn từ list_orders"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Nháp",
+              "Đã xác nhận",
+              "Đang giao",
+              "Hoàn tất",
+              "Đã hủy"
+            ],
+            "description": "Trạng thái mới của đơn"
+          },
+          "paid": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Tổng số tiền VND đã thu, không phải khoản thu tăng thêm"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "paid"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "recordIds"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.5.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:eaaf1f8a1870c10f28326d66a5c6e173d3e039a2e95b5ec1c657d07b85a39e28",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "functionId": "create_movement",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "ID sản phẩm từ list_products"
+          },
+          "warehouseId": {
+            "type": "string",
+            "description": "ID kho từ list_warehouses"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Nhập kho",
+              "Xuất kho"
+            ],
+            "description": "Loại phiếu kho"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000,
+            "description": "Số lượng dương trên phiếu"
+          },
+          "date": {
+            "type": "string",
+            "description": "Ngày phiếu YYYY-MM-DD"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Mã đơn hàng hoặc chứng từ tham chiếu"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú phiếu"
+          }
+        },
+        "required": [
+          "productId",
+          "warehouseId",
+          "type",
+          "quantity",
+          "date",
+          "reference",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {
+        "type": [
+          "Nhập kho",
+          "Xuất kho"
+        ]
+      }
+    },
+    {
+      "functionId": "create_order",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "description": "ID đối tác từ list_partners"
+          },
+          "warehouseId": {
+            "type": "string",
+            "description": "ID kho từ list_warehouses"
+          },
+          "date": {
+            "type": "string",
+            "description": "Ngày đặt hàng theo giờ Việt Nam YYYY-MM-DD"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú đơn hàng"
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": {
+                  "type": "string",
+                  "description": "ID sản phẩm từ list_products"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000,
+                  "description": "Số lượng đặt"
+                }
+              },
+              "required": [
+                "productId",
+                "quantity"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Chi tiết sản phẩm và số lượng, không gửi giá từ trình duyệt"
+          }
+        },
+        "required": [
+          "partnerId",
+          "warehouseId",
+          "date",
+          "notes",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "create_visit",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "description": "ID đại lý từ list_partners"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Vĩ độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Kinh độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+          },
+          "accuracy": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Độ chính xác GPS do trình duyệt cung cấp, đơn vị mét"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú không bắt buộc về lượt ghé; gửi chuỗi rỗng nếu không có"
+          }
+        },
+        "required": [
+          "partnerId",
+          "latitude",
+          "longitude",
+          "accuracy",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "save_partners",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID đối tác khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên đối tác"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã đối tác"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Nhà phân phối",
+              "Đại lý"
+            ],
+            "description": "Loại đối tác"
+          },
+          "region": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Khu vực"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Điện thoại"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Địa chỉ"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Hoạt động",
+              "Tạm ngưng"
+            ],
+            "description": "Trạng thái"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú"
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "type",
+          "region",
+          "phone",
+          "address",
+          "status",
+          "notes"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {
+        "type": [
+          "Nhà phân phối",
+          "Đại lý"
+        ],
+        "status": [
+          "Hoạt động",
+          "Tạm ngưng"
+        ]
+      }
+    },
+    {
+      "functionId": "save_products",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID sản phẩm khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên sản phẩm"
+          },
+          "sku": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã SKU"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Đơn vị tính"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Nhóm hàng"
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Giá bán VND"
+          },
+          "minimum": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Mức tồn tối thiểu"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Đang bán",
+              "Ngừng bán"
+            ],
+            "description": "Trạng thái sản phẩm"
+          }
+        },
+        "required": [
+          "name",
+          "sku",
+          "unit",
+          "category",
+          "price",
+          "minimum",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {
+        "status": [
+          "Đang bán",
+          "Ngừng bán"
+        ]
+      }
+    },
+    {
+      "functionId": "save_warehouses",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "description": "ID kho khi sửa; bỏ trống khi tạo",
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Tên kho"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Mã kho"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Địa chỉ kho"
+          },
+          "manager": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Người phụ trách"
+          }
+        },
+        "required": [
+          "name",
+          "code",
+          "address",
+          "manager"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "update_order",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đơn từ list_orders"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Nháp",
+              "Đã xác nhận",
+              "Đang giao",
+              "Hoàn tất",
+              "Đã hủy"
+            ],
+            "description": "Trạng thái mới của đơn"
+          },
+          "paid": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Tổng số tiền VND đã thu, không phải khoản thu tăng thêm"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "paid"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {
+        "status": [
+          "Nháp",
+          "Đã xác nhận",
+          "Đang giao",
+          "Hoàn tất",
+          "Đã hủy"
+        ]
+      }
+    },
+    {
+      "functionId": "get_order",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "description": "ID đơn hàng lấy từ list_orders",
+          "nullable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đơn hàng lấy từ list_orders"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_movements",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_orders",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_partners",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_products",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_visits",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số lượt ghé bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số lượt ghé bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_warehouses",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "offset",
+          "kind": "INT",
+          "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số bản ghi bỏ qua, bắt đầu 0 và tăng 200 mỗi trang"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "order_partner",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "description": "ID đối tác lấy từ list_partners",
+          "nullable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID đối tác lấy từ list_partners"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "order_products",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "ids",
+          "kind": "TEXT[]",
+          "description": "ID các sản phẩm lấy từ list_products, tối đa 50",
+          "nullable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "ID các sản phẩm lấy từ list_products, tối đa 50"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "order_warehouse",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "description": "ID kho lấy từ list_warehouses",
+          "nullable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID kho lấy từ list_warehouses"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "visit_partner",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "description": "ID bản ghi đại lý lấy từ danh sách đối tác",
+          "nullable": false
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID bản ghi đại lý lấy từ danh sách đối tác"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    }
+  ],
+  "client": true,
+  "augmentation": "none",
+  "version": 1
+}

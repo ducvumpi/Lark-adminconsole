@@ -1,0 +1,78 @@
+{
+  "name": "Cập nhật trạng thái và tiền đã thu",
+  "description": "Cập nhật trạng thái và tiền đã thu cho nhóm vận hành nội bộ. Sau lỗi kết quả chưa xác định, đọc lại danh sách trước khi gửi lại.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "ID đơn từ list_orders"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Nháp",
+          "Đã xác nhận",
+          "Đang giao",
+          "Hoàn tất",
+          "Đã hủy"
+        ],
+        "description": "Trạng thái mới của đơn"
+      },
+      "paid": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991,
+        "description": "Tổng số tiền VND đã thu, không phải khoản thu tăng thêm"
+      }
+    },
+    "required": [
+      "id",
+      "status",
+      "paid"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "recordIds"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.5.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:eaaf1f8a1870c10f28326d66a5c6e173d3e039a2e95b5ec1c657d07b85a39e28",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

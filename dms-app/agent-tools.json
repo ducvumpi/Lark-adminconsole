@@ -1,0 +1,10 @@
+{
+  "exclude": [
+    "order_products",
+    "order_partner",
+    "order_warehouse",
+    "list_visits",
+    "visit_partner",
+    "create_visit"
+  ]
+}

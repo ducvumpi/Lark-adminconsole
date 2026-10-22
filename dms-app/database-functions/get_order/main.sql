@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Mã đơn" AS code, "Đối tác ID" AS partner_id, "Kho ID" AS warehouse_id, "Ngày đặt" AS date, ("Trạng thái").name AS status, "Chi tiết JSON" AS lines, "Tổng tiền" AS total, "Đã thu" AS paid, "Ghi chú" AS notes FROM "DMS - Đơn hàng" WHERE rec_id = $1 LIMIT 1

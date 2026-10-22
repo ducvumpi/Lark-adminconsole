@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Tên sản phẩm" AS name, "SKU" AS sku, "Đơn vị" AS unit, "Nhóm hàng" AS category, "Giá bán" AS price, "Tồn tối thiểu" AS minimum, ("Trạng thái").name AS status FROM "DMS - Sản phẩm" WHERE rec_id = ANY($1) LIMIT 50

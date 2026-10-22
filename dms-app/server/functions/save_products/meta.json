@@ -1,0 +1,108 @@
+{
+  "name": "Lưu sản phẩm",
+  "description": "Lưu sản phẩm cho nhóm vận hành nội bộ. Sau lỗi kết quả chưa xác định, đọc lại danh sách trước khi gửi lại.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "recordId": {
+        "description": "ID sản phẩm khi sửa; bỏ trống khi tạo",
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "Tên sản phẩm"
+      },
+      "sku": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "Mã SKU"
+      },
+      "unit": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+        "description": "Đơn vị tính"
+      },
+      "category": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Nhóm hàng"
+      },
+      "price": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000000,
+        "description": "Giá bán VND"
+      },
+      "minimum": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000,
+        "description": "Mức tồn tối thiểu"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Đang bán",
+          "Ngừng bán"
+        ],
+        "description": "Trạng thái sản phẩm"
+      }
+    },
+    "required": [
+      "name",
+      "sku",
+      "unit",
+      "category",
+      "price",
+      "minimum",
+      "status"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "recordIds"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.5.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:045830d3fb55b415565eb3d0f62997d9cce842bf51f3132a8d29806aa735f282",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Tên kho" AS name, "Mã kho" AS code, "Địa chỉ" AS address, "Người phụ trách" AS manager FROM "DMS - Kho" ORDER BY rec_id DESC LIMIT 200 OFFSET $1

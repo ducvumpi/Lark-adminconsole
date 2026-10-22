@@ -1,0 +1,14 @@
+{
+  "name": "Kho của đơn hàng",
+  "description": "Kho của đơn hàng. Chỉ đọc dữ liệu DMS của nhóm vận hành được cấp quyền truy cập ứng dụng.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "description": "ID kho lấy từ list_warehouses",
+        "nullable": false
+      }
+    ]
+  }
+}

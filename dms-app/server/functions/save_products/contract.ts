@@ -1,0 +1,3 @@
+import {z} from 'zod';
+export const input = z.object({recordId:z.string().optional().describe('ID sản phẩm khi sửa; bỏ trống khi tạo'),name:z.string().min(1).max(200).describe('Tên sản phẩm'),sku:z.string().min(1).max(100).describe('Mã SKU'),unit:z.string().min(1).max(50).describe('Đơn vị tính'),category:z.string().max(200).describe('Nhóm hàng'),price:z.number().int().min(0).max(1000000000).describe('Giá bán VND'),minimum:z.number().int().min(0).max(1000000).describe('Mức tồn tối thiểu'),status:z.enum(['Đang bán','Ngừng bán']).describe('Trạng thái sản phẩm')}).strict();
+export const output = z.object({status:z.enum(['success','partial','failed','unknown']),message:z.string(),recordIds:z.array(z.string())});

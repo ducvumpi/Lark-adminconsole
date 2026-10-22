@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Mã phiếu" AS code, "Sản phẩm ID" AS product_id, "Kho ID" AS warehouse_id, ("Loại phiếu").name AS type, "Số lượng" AS quantity, "Ngày ghi nhận" AS date, "Tham chiếu" AS reference, "Ghi chú" AS notes FROM "DMS - Sổ kho" ORDER BY rec_id DESC LIMIT 200 OFFSET $1

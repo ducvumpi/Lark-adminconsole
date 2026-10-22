@@ -1,0 +1,3 @@
+import {z} from 'zod';
+export const input = z.object({partnerId:z.string().describe('ID đối tác từ list_partners'),warehouseId:z.string().describe('ID kho từ list_warehouses'),date:z.string().describe('Ngày đặt hàng theo giờ Việt Nam YYYY-MM-DD'),notes:z.string().max(2000).describe('Ghi chú đơn hàng'),lines:z.array(z.object({productId:z.string().describe('ID sản phẩm từ list_products'),quantity:z.number().int().min(1).max(1000000).describe('Số lượng đặt')}).strict()).min(1).max(50).describe('Chi tiết sản phẩm và số lượng, không gửi giá từ trình duyệt')}).strict();
+export const output = z.object({status:z.enum(['success','partial','failed','unknown']),message:z.string(),recordIds:z.array(z.string())});

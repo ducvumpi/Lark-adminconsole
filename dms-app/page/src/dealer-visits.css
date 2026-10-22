@@ -1,0 +1,94 @@
+.gps-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 13px 16px;
+  border-left: 3px solid var(--teal);
+  background: #f4f8f5;
+  color: #4d6859;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.gps-info strong {
+  flex-shrink: 0;
+  color: #285647;
+}
+
+.gps-search input {
+  padding-left: 11px;
+}
+
+.gps-coordinates {
+  font-variant-numeric: tabular-nums;
+}
+
+.gps-capture {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.gps-capture strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.gps-capture small {
+  max-width: 320px;
+}
+
+.gps-position {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: -8px 0 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.gps-position strong {
+  color: #31594a;
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+}
+
+.gps-position a {
+  color: var(--teal);
+}
+
+.dialog .field textarea {
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  border: 1px solid #cedbd4;
+  border-radius: 6px;
+  padding: 10px 11px;
+  color: #25463a;
+  font: inherit;
+}
+
+.dialog .field textarea:focus-visible {
+  outline: 3px solid #9cd6cf;
+  outline-offset: 2px;
+}
+
+@media (max-width: 550px) {
+  .gps-info {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gps-capture {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

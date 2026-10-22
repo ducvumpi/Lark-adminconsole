@@ -1,0 +1,86 @@
+{
+  "name": "Ghi nhận check-in GPS tại đại lý",
+  "description": "Lưu một lượt ghé đại lý đang hoạt động cùng tọa độ trình duyệt, độ chính xác và nhân viên hiện tại; chỉ gọi sau khi người dùng chủ động lấy GPS. Không dùng cho theo dõi liên tục hoặc chứng minh vị trí chống giả mạo.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "partnerId": {
+        "type": "string",
+        "description": "ID đại lý từ list_partners"
+      },
+      "latitude": {
+        "type": "number",
+        "minimum": -90,
+        "maximum": 90,
+        "description": "Vĩ độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+      },
+      "longitude": {
+        "type": "number",
+        "minimum": -180,
+        "maximum": 180,
+        "description": "Kinh độ lấy từ trình duyệt sau khi nhân viên cấp quyền GPS"
+      },
+      "accuracy": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100000,
+        "description": "Độ chính xác GPS do trình duyệt cung cấp, đơn vị mét"
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 2000,
+        "description": "Ghi chú không bắt buộc về lượt ghé; gửi chuỗi rỗng nếu không có"
+      }
+    },
+    "required": [
+      "partnerId",
+      "latitude",
+      "longitude",
+      "accuracy",
+      "notes"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "recordIds"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.5.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:1a998da8224db87a429092282928bee7fbd0351eca2a5037a24064773855e2dd",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

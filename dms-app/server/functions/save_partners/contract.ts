@@ -1,0 +1,3 @@
+import {z} from 'zod';
+export const input = z.object({recordId:z.string().optional().describe('ID đối tác khi sửa; bỏ trống khi tạo'),name:z.string().min(1).max(200).describe('Tên đối tác'),code:z.string().min(1).max(100).describe('Mã đối tác'),type:z.enum(['Nhà phân phối','Đại lý']).describe('Loại đối tác'),region:z.string().max(200).describe('Khu vực'),phone:z.string().max(50).describe('Điện thoại'),address:z.string().max(500).describe('Địa chỉ'),status:z.enum(['Hoạt động','Tạm ngưng']).describe('Trạng thái'),notes:z.string().max(2000).describe('Ghi chú')}).strict();
+export const output = z.object({status:z.enum(['success','partial','failed','unknown']),message:z.string(),recordIds:z.array(z.string())});

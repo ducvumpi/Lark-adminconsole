@@ -1,0 +1,24 @@
+{
+  "configVersion": 1,
+  "template": {
+    "name": "database-starter",
+    "version": 2
+  },
+  "larkProfile": "lark-test",
+  "name": "dms-app",
+  "appToken": "DENAp0kOirKIGijXz80lxDkggqx",
+  "bindings": {
+    "MAIN_BASE": {
+      "type": "base",
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "tableIds": [
+        "tblPmSvbdiFUKlXZ",
+        "tblBW5VWwb3u1Y0C",
+        "tblbqsLe4vW6T9Sf",
+        "tblEXqwsjsn31shd",
+        "tblsaFXQD6cLPF34",
+        "tbltfPPUVDZHQvNY"
+      ]
+    }
+  }
+}

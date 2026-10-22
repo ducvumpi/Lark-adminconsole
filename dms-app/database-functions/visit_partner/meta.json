@@ -1,0 +1,14 @@
+{
+  "name": "Kiểm tra đại lý check-in",
+  "description": "Kiểm tra đại lý đang hoạt động và lấy ID nhân viên hiện tại để ghi nhận check-in; chỉ dùng nội bộ khi tạo lượt ghé.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "description": "ID bản ghi đại lý lấy từ danh sách đối tác",
+        "nullable": false
+      }
+    ]
+  }
+}

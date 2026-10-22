@@ -1,0 +1,1 @@
+SELECT rec_id AS id, "Tên đối tác" AS name, "Mã đối tác" AS code, ("Loại").name AS type, "Khu vực" AS region, "Điện thoại" AS phone, "Địa chỉ" AS address, ("Trạng thái").name AS status, "Ghi chú" AS notes FROM "DMS - Đối tác" ORDER BY rec_id DESC LIMIT 200 OFFSET $1

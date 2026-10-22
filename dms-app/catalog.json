@@ -1,0 +1,621 @@
+{
+  "baseAppUrl": "https://tsgsifizy3jj.sg.larksuite.com/baseapp/DENAp0kOirKIGijXz80lxDkggqx",
+  "tables": [
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Giá bán": {
+          "baseType": "Number",
+          "id": "fldWBYqzZf",
+          "name": "Giá bán",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Nhóm hàng": {
+          "baseType": "Text",
+          "id": "fldmbHul9o",
+          "name": "Nhóm hàng",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "SKU": {
+          "baseType": "Text",
+          "id": "fldly70QHX",
+          "name": "SKU",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Trạng thái": {
+          "allOptions": [
+            {
+              "id": "opthSkMo1M",
+              "name": "Đang bán"
+            },
+            {
+              "id": "optAO1Zcbp",
+              "name": "Ngừng bán"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldh8EI3jo",
+          "name": "Trạng thái",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opthSkMo1M",
+                "name": "Đang bán"
+              },
+              {
+                "id": "optAO1Zcbp",
+                "name": "Ngừng bán"
+              }
+            ]
+          }
+        },
+        "Tên sản phẩm": {
+          "baseType": "Text",
+          "id": "fld0dBsZXD",
+          "name": "Tên sản phẩm",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tồn tối thiểu": {
+          "baseType": "Number",
+          "id": "fldHzXbo2y",
+          "name": "Tồn tối thiểu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Đơn vị": {
+          "baseType": "Text",
+          "id": "flduSQMIH9",
+          "name": "Đơn vị",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblBW5VWwb3u1Y0C",
+      "name": "DMS - Sản phẩm"
+    },
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Chi tiết JSON": {
+          "baseType": "Text",
+          "id": "fldaBO1Zb2",
+          "name": "Chi tiết JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Ghi chú": {
+          "baseType": "Text",
+          "id": "fldNDwiynj",
+          "name": "Ghi chú",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Kho ID": {
+          "baseType": "Text",
+          "id": "fldYRzgC8J",
+          "name": "Kho ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã đơn": {
+          "baseType": "Text",
+          "id": "fldtOZT21Z",
+          "name": "Mã đơn",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Ngày đặt": {
+          "baseType": "Text",
+          "id": "flde23tblI",
+          "name": "Ngày đặt",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Trạng thái": {
+          "allOptions": [
+            {
+              "id": "optcUK42I1",
+              "name": "Nháp"
+            },
+            {
+              "id": "optW3OivUI",
+              "name": "Đã xác nhận"
+            },
+            {
+              "id": "optBt78Z9I",
+              "name": "Đang giao"
+            },
+            {
+              "id": "optN8j7mGd",
+              "name": "Hoàn tất"
+            },
+            {
+              "id": "optyHjawCD",
+              "name": "Đã hủy"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldOEbvxT5",
+          "name": "Trạng thái",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "optcUK42I1",
+                "name": "Nháp"
+              },
+              {
+                "id": "optW3OivUI",
+                "name": "Đã xác nhận"
+              },
+              {
+                "id": "optBt78Z9I",
+                "name": "Đang giao"
+              },
+              {
+                "id": "optN8j7mGd",
+                "name": "Hoàn tất"
+              },
+              {
+                "id": "optyHjawCD",
+                "name": "Đã hủy"
+              }
+            ]
+          }
+        },
+        "Tổng tiền": {
+          "baseType": "Number",
+          "id": "fldQ1Ld5lB",
+          "name": "Tổng tiền",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Đã thu": {
+          "baseType": "Number",
+          "id": "fldPeKMCTL",
+          "name": "Đã thu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Đối tác ID": {
+          "baseType": "Text",
+          "id": "fldvpGZwxc",
+          "name": "Đối tác ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblEXqwsjsn31shd",
+      "name": "DMS - Đơn hàng"
+    },
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Ghi chú": {
+          "baseType": "Text",
+          "id": "fld9BEp9iQ",
+          "name": "Ghi chú",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Khu vực": {
+          "baseType": "Text",
+          "id": "fldKLkHvhc",
+          "name": "Khu vực",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Loại": {
+          "allOptions": [
+            {
+              "id": "optRjqRDQY",
+              "name": "Nhà phân phối"
+            },
+            {
+              "id": "opteIu8TFN",
+              "name": "Đại lý"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldgPfNCmq",
+          "name": "Loại",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "optRjqRDQY",
+                "name": "Nhà phân phối"
+              },
+              {
+                "id": "opteIu8TFN",
+                "name": "Đại lý"
+              }
+            ]
+          }
+        },
+        "Mã đối tác": {
+          "baseType": "Text",
+          "id": "fldhwELmKO",
+          "name": "Mã đối tác",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Trạng thái": {
+          "allOptions": [
+            {
+              "id": "opt95JAO2x",
+              "name": "Hoạt động"
+            },
+            {
+              "id": "optZdTuI23",
+              "name": "Tạm ngưng"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fld2FndVhj",
+          "name": "Trạng thái",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opt95JAO2x",
+                "name": "Hoạt động"
+              },
+              {
+                "id": "optZdTuI23",
+                "name": "Tạm ngưng"
+              }
+            ]
+          }
+        },
+        "Tên đối tác": {
+          "baseType": "Text",
+          "id": "fldW2PY0lY",
+          "name": "Tên đối tác",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Điện thoại": {
+          "baseType": "Text",
+          "id": "fldNImbpR2",
+          "name": "Điện thoại",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Địa chỉ": {
+          "baseType": "Text",
+          "id": "fldGqRqMRm",
+          "name": "Địa chỉ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblPmSvbdiFUKlXZ",
+      "name": "DMS - Đối tác"
+    },
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Mã kho": {
+          "baseType": "Text",
+          "id": "fldsgO6Maq",
+          "name": "Mã kho",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Người phụ trách": {
+          "baseType": "Text",
+          "id": "fld05Brp8x",
+          "name": "Người phụ trách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tên kho": {
+          "baseType": "Text",
+          "id": "fld959h12k",
+          "name": "Tên kho",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Địa chỉ": {
+          "baseType": "Text",
+          "id": "fldMX9WMMX",
+          "name": "Địa chỉ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblbqsLe4vW6T9Sf",
+      "name": "DMS - Kho"
+    },
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Ghi chú": {
+          "baseType": "Text",
+          "id": "fldZ4qP0DJ",
+          "name": "Ghi chú",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Kho ID": {
+          "baseType": "Text",
+          "id": "fldrqAKToS",
+          "name": "Kho ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Loại phiếu": {
+          "allOptions": [
+            {
+              "id": "opt8jX69xT",
+              "name": "Nhập kho"
+            },
+            {
+              "id": "opttDa5wc8",
+              "name": "Xuất kho"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldTjiHGVi",
+          "name": "Loại phiếu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opt8jX69xT",
+                "name": "Nhập kho"
+              },
+              {
+                "id": "opttDa5wc8",
+                "name": "Xuất kho"
+              }
+            ]
+          }
+        },
+        "Mã phiếu": {
+          "baseType": "Text",
+          "id": "fldEMzrQlC",
+          "name": "Mã phiếu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Ngày ghi nhận": {
+          "baseType": "Text",
+          "id": "fldEks4YIc",
+          "name": "Ngày ghi nhận",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Sản phẩm ID": {
+          "baseType": "Text",
+          "id": "fldzeeY5DP",
+          "name": "Sản phẩm ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Số lượng": {
+          "baseType": "Number",
+          "id": "fldKYN0VJG",
+          "name": "Số lượng",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Tham chiếu": {
+          "baseType": "Text",
+          "id": "fld25gJSlz",
+          "name": "Tham chiếu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblsaFXQD6cLPF34",
+      "name": "DMS - Sổ kho"
+    },
+    {
+      "baseToken": "D4kXbl3y6aLftVsDCTTlhBkfgpe",
+      "fields": {
+        "Ghi chú": {
+          "baseType": "Text",
+          "id": "fld0INesVh",
+          "name": "Ghi chú",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Kinh độ": {
+          "baseType": "Text",
+          "id": "fldgL1dxgd",
+          "name": "Kinh độ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã lượt ghé": {
+          "baseType": "Text",
+          "id": "fldG9dELiM",
+          "name": "Mã lượt ghé",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Nhân viên ID": {
+          "baseType": "Text",
+          "id": "fldIxlylZo",
+          "name": "Nhân viên ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Thời gian check-in": {
+          "baseType": "Text",
+          "id": "fldvVUkW4g",
+          "name": "Thời gian check-in",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Vĩ độ": {
+          "baseType": "Text",
+          "id": "fldMHwnqp1",
+          "name": "Vĩ độ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Đại lý ID": {
+          "baseType": "Text",
+          "id": "fldAI2BGdI",
+          "name": "Đại lý ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Độ chính xác (m)": {
+          "baseType": "Number",
+          "id": "fldghvxJz1",
+          "name": "Độ chính xác (m)",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        }
+      },
+      "id": "tbltfPPUVDZHQvNY",
+      "name": "DMS - Lượt ghé đại lý"
+    }
+  ]
+}
