@@ -6174,5 +6174,37 @@
     "soTienLanNay": 190944000,
     "giaTriTruoc": 0,
     "giaTriSau": 190944000
+  },
+  {
+    "timestamp": "2026-10-22T04:30:16.461Z",
+    "batchId": "fc6b3d4a-22df-4fb8-a983-ec7002a5da44",
+    "wasCreated": true,
+    "action": "import",
+    "recordId": "reczz28QKCZ7XvPw",
+    "brand": "Beplain",
+    "quy": "Q4/2026",
+    "nam": "2026",
+    "thang": "Tháng 10",
+    "maNganSach": "GOI001-02-00",
+    "hangMuc": "GÓI SÀN",
+    "soTienLanNay": 190944000,
+    "giaTriTruoc": 0,
+    "giaTriSau": 190944000
+  },
+  {
+    "timestamp": "2026-10-22T04:32:36.168Z",
+    "batchId": "89410acb-d903-4223-ab10-39fb88964b92",
+    "wasCreated": true,
+    "action": "import",
+    "recordId": "reczz28QKF1q8mhQ",
+    "brand": "Beplain",
+    "quy": "Q4/2026",
+    "nam": "2026",
+    "thang": "Tháng 10",
+    "maNganSach": "GOI001-02-00",
+    "hangMuc": "GÓI SÀN",
+    "soTienLanNay": 190944000,
+    "giaTriTruoc": 0,
+    "giaTriSau": 190944000
   }
 ]

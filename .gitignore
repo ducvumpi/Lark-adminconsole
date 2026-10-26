@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Encrypted per-user sessions, budget draft snapshots and reconciliation history
+/data/budget-app/
+/data/a03-migration/
+/a03-lark-app/.base-database-cli/

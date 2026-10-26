@@ -28,6 +28,16 @@ export interface LarkSearchCondition {
   value: string[];
 }
 
+export interface ApprovalInstanceResponse {
+  instance_code: string;
+  approval_name: string;
+  serial_number: string;
+  status: string;
+  start_time: string;
+  end_time: string;
+  form: string;
+}
+
 /** Tên hiển thị dễ hiểu cho loại field của Lark Base */
 export const FIELD_TYPE_LABEL: Record<number, string> = {
   1: "Văn bản",
@@ -226,6 +236,47 @@ export class LarkBaseClient {
     } while (pageToken);
 
     return allFields;
+  }
+
+  async getApprovalInstance(instanceCode: string): Promise<ApprovalInstanceResponse> {
+    const headers = await this.authHeader();
+    let res;
+    try {
+      res = await this.http.get<{
+        code: number;
+        msg: string;
+        data: ApprovalInstanceResponse;
+      }>(`/approval/v4/instances/${encodeURIComponent(instanceCode)}`, {
+        headers,
+        params: { locale: "zh-CN" },
+      });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const responseData: unknown = error.response?.data;
+        const details = typeof responseData === "object" && responseData !== null
+          ? responseData as Record<string, unknown>
+          : {};
+        const apiCode = typeof details.code === "number" ? details.code : undefined;
+        const apiMessage = typeof details.msg === "string"
+          ? details.msg
+          : typeof details.message === "string"
+            ? details.message
+            : error.message;
+        const status = error.response?.status;
+        throw new LarkApiError(
+          `Tra cứu phiếu Approval thất bại${status ? ` (HTTP ${status}` : ""}${apiCode !== undefined ? `${status ? ", " : " ("}code ${apiCode}` : ""}${status || apiCode !== undefined ? ")" : ""}: ${apiMessage}`,
+          apiCode
+        );
+      }
+      throw error;
+    }
+    if (res.data.code !== 0) {
+      throw new LarkApiError(
+        `Tra cứu phiếu Approval lỗi (code ${res.data.code}): ${res.data.msg}`,
+        res.data.code
+      );
+    }
+    return res.data.data;
   }
 
   async listRecords(options?: {

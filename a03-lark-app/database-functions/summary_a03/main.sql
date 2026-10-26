@@ -1,0 +1,1 @@
+SELECT COUNT(rec_id) AS count, SUM("Số tiền TGĐ duyệt") AS amount, MIN("Mốc sao chép") AS copied_at FROM "A03. Ngân sách được duyệt" WHERE ($1 = '' OR ("Brand").name = $1) AND ($2 = '' OR ("Năm").name = $2) AND ($3 = '' OR ("Quý ngân sách").name = $3) AND ($4 = '' OR ("Tháng ngân sách").name = $4) AND ($5 = '' OR "Mã ngân sách" LIKE $5 OR "Nội dung chi tiêu" LIKE $5)

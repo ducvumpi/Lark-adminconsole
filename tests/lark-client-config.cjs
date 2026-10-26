@@ -7,18 +7,50 @@ const configA = { appId: "app-a", appSecret: "fake-a", baseAppToken: "base-a", t
 const configB = { appId: "app-b", appSecret: "fake-b", baseAppToken: "base-b", tableId: "table-b", apiBaseUrl: "https://example-b.test" };
 let active = configA;
 const calls = [];
+const axiosMock = {
+  isAxiosError: error => error?.isAxiosError === true,
+  create: options => ({
+    post: async (path, body) => {
+      calls.push({ baseURL: options.baseURL, path, body });
+      active = configB;
+      return { data: { code: 0, tenant_access_token: "fake-token", expire: 7200 } };
+    },
+    get: async path => {
+      calls.push({ baseURL: options.baseURL, path });
+      if (path.includes("bad-approval")) {
+        const error = new Error("Request failed with status code 400");
+        error.isAxiosError = true;
+        error.response = {
+          status: 400,
+          data: { code: 1390001, msg: "Approval instance not found" },
+        };
+        throw error;
+      }
+      if (path.startsWith("/approval/v4/instances/")) {
+        return {
+          data: {
+            code: 0,
+            data: {
+              instance_code: "approval-123",
+              approval_name: "Đề xuất ngân sách",
+              serial_number: "NS-001",
+              status: "APPROVED",
+              start_time: "1761100000000",
+              end_time: "1761103600000",
+              form: '[{"name":"Số tiền","value":100}]',
+            },
+          },
+        };
+      }
+      return { data: { code: 0, data: { items: [], has_more: false } } };
+    },
+  }),
+};
 const context = {
   exports: {}, console,
   require: name => {
     if (name === "./config") return { getConfig: () => active, isConfigComplete: () => true };
-    if (name === "axios") return { create: options => ({
-      post: async (path, body) => {
-        calls.push({ baseURL: options.baseURL, path, body });
-        active = configB;
-        return { data: { code: 0, tenant_access_token: "fake-token", expire: 7200 } };
-      },
-      get: async path => { calls.push({ baseURL: options.baseURL, path }); return { data: { code: 0, data: { items: [], has_more: false } } }; },
-    }) };
+    if (name === "axios") return axiosMock;
     return require(name);
   },
 };
@@ -39,6 +71,13 @@ async function main() {
   const pinned = new context.exports.LarkBaseClient({ config: configA });
   await pinned.listFields();
   assert.equal(calls[5].path, "/bitable/v1/apps/base-a/tables/table-a/fields");
-  console.log("Lark client config snapshot checks passed (offline)");
+  const instance = await pinned.getApprovalInstance("approval/123");
+  assert.equal(calls[6].path, "/approval/v4/instances/approval%2F123");
+  assert.equal(instance.serial_number, "NS-001");
+  await assert.rejects(
+    pinned.getApprovalInstance("bad-approval"),
+    /HTTP 400, code 1390001\): Approval instance not found/
+  );
+  console.log("Lark client config and Approval lookup/error handling checks passed (offline)");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

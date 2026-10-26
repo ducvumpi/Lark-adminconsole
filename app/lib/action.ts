@@ -24,6 +24,16 @@ import {
 } from "./config";
 export type ActionResult<T = undefined> = { success: true; data?: T } | { success: false; message: string };
 
+export interface ApprovalInstanceLookup {
+  instanceCode: string;
+  approvalName: string;
+  serialNumber: string;
+  status: string;
+  startTime: string;
+  endTime: string;
+  form: Array<{ label: string; value: string }>;
+}
+
 export type InvitationImportSummary = {
   scanned: number;
   uploaded: number;
@@ -68,6 +78,60 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+}
+
+export async function lookupApprovalInstanceAction(
+  instanceCode: string
+): Promise<ActionResult<ApprovalInstanceLookup>> {
+  const cookieStore = await cookies();
+  if (cookieStore.get(SESSION_COOKIE)?.value !== getExpectedSessionValue()) {
+    return { success: false, message: "Phiên đăng nhập không hợp lệ." };
+  }
+
+  const code = instanceCode.trim();
+  if (!code) return { success: false, message: "Vui lòng nhập instance_code của phiếu Approval." };
+
+  try {
+    const instance = await getLarkClient().getApprovalInstance(code);
+    const formValue: unknown = JSON.parse(instance.form);
+    if (!Array.isArray(formValue)) {
+      return { success: false, message: "Đã tìm thấy phiếu nhưng dữ liệu form Approval không đúng định dạng danh sách." };
+    }
+
+    const form = formValue.map((item: unknown, index: number) => {
+      if (typeof item !== "object" || item === null || Array.isArray(item)) {
+        return { label: `Trường ${index + 1}`, value: JSON.stringify(item) };
+      }
+      const field = item as Record<string, unknown>;
+      const label = typeof field.name === "string" && field.name.trim()
+        ? field.name
+        : `Trường ${index + 1}`;
+      const value = field.value == null
+        ? ""
+        : typeof field.value === "string"
+          ? field.value
+          : JSON.stringify(field.value);
+      return { label, value };
+    });
+
+    return {
+      success: true,
+      data: {
+        instanceCode: instance.instance_code || code,
+        approvalName: instance.approval_name,
+        serialNumber: instance.serial_number,
+        status: instance.status,
+        startTime: instance.start_time,
+        endTime: instance.end_time,
+        form,
+      },
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Không thể tra cứu phiếu Approval.",
+    };
+  }
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -2996,6 +3060,7 @@ interface AuditLogEntry {
   wasCreated?: boolean;
   action: "import" | "approve" | "edit" | "delete";
   recordId?: string;
+  approvalInstanceCode?: string;
   brand: string;
   quy: string;
   nam: string;
@@ -3781,6 +3846,7 @@ export async function importTgdBudgetExcelAction(
     const isTradeBudget = loaiNganSach.trim() === "Ngân sách Trade";
     const loaiDeXuat = String(formData.get("loaiDeXuat") || "");
     const lanDeXuat = String(formData.get("lanDeXuat") || ""); // 👈 thêm dòng này
+    const approvalInstanceCode = String(formData.get("approvalInstanceCode") || "").trim();
     const hasChildBudgetCodesRaw = formData.get("hasChildBudgetCodes");
     if (hasChildBudgetCodesRaw !== null && hasChildBudgetCodesRaw !== "true" && hasChildBudgetCodesRaw !== "false") {
       return { success: false, message: "Lựa chọn mã ngân sách con không hợp lệ." };
@@ -3891,6 +3957,13 @@ export async function importTgdBudgetExcelAction(
     const Fopt = await buildOptionalFieldNameResolver(client);
     const khoanNganSachField = Fopt("Khoản ngân sách");
     const lanDeXuatField = Fopt("Lần đề xuất"); // 👈 thêm dòng này — đổi tên cho khớp đúng field thật trong Base nếu khác
+    const approvalInstanceCodeField = Fopt("Mã phiếu đề xuất");
+    if (approvalInstanceCode && !approvalInstanceCodeField) {
+      return {
+        success: false,
+        message: 'Đã nhập mã phiếu Approval nhưng Base chưa có field văn bản "Mã phiếu đề xuất". Tạo field này trong Base rồi thử lại.',
+      };
+    }
     const phanLoaiNguonNsField = F("Phân loại nguồn NS");
     const allFieldsMeta = await client.listFields();
     const fieldMetaMap = buildFieldMetaMap(allFieldsMeta);
@@ -4094,7 +4167,7 @@ export async function importTgdBudgetExcelAction(
               processedSourceCells.add(sourceCellKey);
 
               const syntheticKey = maNganSach !== sourceCode
-                ? JSON.stringify([brand, quarterRaw, nam, thangLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat])
+                ? JSON.stringify([brand, quarterRaw, nam, thangLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat, approvalInstanceCode])
                 : "";
               const existingSynthetic = syntheticKey ? syntheticRecordTotals.get(syntheticKey) : undefined;
               if (existingSynthetic) {
@@ -4120,6 +4193,7 @@ export async function importTgdBudgetExcelAction(
                 ...(loaiNganSach ? { [F("Loại ngân sách")]: loaiNganSach } : {}),
                 ...(loaiDeXuat ? { [F("Loại đề xuất")]: loaiDeXuat } : {}),
                 ...(lanDeXuatField && lanDeXuat ? { [lanDeXuatField]: lanDeXuat } : {}), // 👈 thêm dòng này
+                ...(approvalInstanceCodeField && approvalInstanceCode ? { [approvalInstanceCodeField]: approvalInstanceCode } : {}),
 
               };
               const coercedFields = buildFieldsBySmartType(
@@ -4140,6 +4214,7 @@ export async function importTgdBudgetExcelAction(
                   wasCreated: true,
                   action: "import",
                   recordId: newRecord.record_id,
+                  approvalInstanceCode: approvalInstanceCode || undefined,
                   brand,
                   quy: quarterRaw,
                   nam,
@@ -4302,7 +4377,7 @@ export async function importTgdBudgetExcelAction(
 
               const effectiveBrand = isTradeBudget ? "N/A" : brandCol.name;
               const syntheticKey = maNganSach !== sourceCode
-                ? JSON.stringify([effectiveBrand, quarterBrandLayout, namBrandLayout, monthLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat])
+                ? JSON.stringify([effectiveBrand, quarterBrandLayout, namBrandLayout, monthLabel, maNganSach, loaiNganSach, loaiDeXuat, lanDeXuat, approvalInstanceCode])
                 : "";
               const existingSynthetic = syntheticKey ? syntheticRecordTotals.get(syntheticKey) : undefined;
               if (existingSynthetic) {
@@ -4338,6 +4413,7 @@ export async function importTgdBudgetExcelAction(
                 ...(loaiNganSach ? { [F("Loại ngân sách")]: loaiNganSach } : {}),
                 ...(loaiDeXuat ? { [F("Loại đề xuất")]: loaiDeXuat } : {}),
                 ...(lanDeXuatField && lanDeXuat ? { [lanDeXuatField]: lanDeXuat } : {}), // 👈 thêm dòng này
+                ...(approvalInstanceCodeField && approvalInstanceCode ? { [approvalInstanceCodeField]: approvalInstanceCode } : {}),
               };
               const coercedFields = buildFieldsBySmartType(
                 fieldsToSend,
@@ -4365,6 +4441,7 @@ export async function importTgdBudgetExcelAction(
                   wasCreated: true,
                   action: "import",
                   recordId: newRecord.record_id,
+                  approvalInstanceCode: approvalInstanceCode || undefined,
                   brand: isTradeBudget ? "N/A" : brandCol.name,
                   quy: quarterBrandLayout,
                   nam: namBrandLayout,
@@ -4608,8 +4685,6 @@ export async function undoImportBatchAction(
     return { success: false, message: err.message || "Hoàn tác batch thất bại." };
   }
 }
-
-
 
 
 

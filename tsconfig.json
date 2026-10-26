@@ -31,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "dms-app"]
+  "exclude": ["node_modules", "dms-app", "a03-lark-app"]
 }

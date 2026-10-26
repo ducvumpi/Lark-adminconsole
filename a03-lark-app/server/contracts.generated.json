@@ -1,0 +1,813 @@
+{
+  "contractFormatVersion": 1,
+  "layout": "workspace",
+  "schemaHash": "sha256:e09dbccbf5797ab254ffc9b54acbc9976dbc20173abef4ad66095498a0c5c396",
+  "functions": [
+    {
+      "functionId": "detail_a03",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID bản ghi ở Base mới từ list_a03, không phải ID nguồn"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "draft_rows",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Danh sách ID A03 được chọn từ list_a03, tối đa 50 dòng"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_a03",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "year": {
+            "type": "string",
+            "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "quarter": {
+            "type": "string",
+            "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "month": {
+            "type": "string",
+            "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số dòng bỏ qua; bắt đầu 0, tăng 50 theo từng trang"
+          }
+        },
+        "required": [
+          "brand",
+          "year",
+          "quarter",
+          "month",
+          "keyword",
+          "offset"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "list_drafts",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "summary_a03",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "year": {
+            "type": "string",
+            "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "quarter": {
+            "type": "string",
+            "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "month": {
+            "type": "string",
+            "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+          }
+        },
+        "required": [
+          "brand",
+          "year",
+          "quarter",
+          "month",
+          "keyword"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "workflow_context",
+      "functionType": 1,
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID hồ sơ lấy từ trường id của list_drafts, chỉ hồ sơ thuộc quyền của người gọi"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "functionId": "budget_flow",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "preview_sheet",
+              "submit",
+              "approve",
+              "reject",
+              "cancel"
+            ],
+            "description": "Xem tiền Sheet, gửi luồng, đồng ý, từ chối hoặc người lập rút hồ sơ"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 35,
+            "description": "ID hồ sơ từ list_drafts; người gọi phải là người lập hoặc người được phân công duyệt"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Phiên xử lý từ list_drafts; chuỗi rỗng với hồ sơ nháp cũ chưa có phiên"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ý kiến xử lý; bắt buộc khi từ chối, chuỗi rỗng nếu không ghi chú"
+          },
+          "sheetHash": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "SHA256 bản xem trước Sheet do preview_sheet trả về; submit phải gửi đúng, hành động khác gửi chuỗi rỗng"
+          },
+          "nodes": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "userId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 150
+                }
+              },
+              "required": [
+                "label",
+                "userId",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Một đến năm node theo đúng thứ tự khi submit, userId lấy từ UserSelectorEditor.user_id; các hành động khác gửi mảng rỗng"
+          }
+        },
+        "required": [
+          "action",
+          "id",
+          "version",
+          "comment",
+          "sheetHash",
+          "nodes"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "sheetHash": {
+            "type": "string"
+          },
+          "sheetLines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "before": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "proposed": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "before",
+                "proposed"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.6.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:28a1885a46e6b822a3ce460193ee2364a62d2f9d4ed0656cf5c58f2e635b8013",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    },
+    {
+      "functionId": "save_draft",
+      "functionType": 2,
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180,
+            "description": "Tên hồ sơ ngân sách do người lập nhập"
+          },
+          "sheetUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Liên kết Lark Sheets nguồn hoặc chuỗi rỗng nếu nhập trực tiếp"
+          },
+          "approvers": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Tên hoặc email người duyệt đề xuất; đây chưa phải danh tính được xác thực của native Approval"
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 4,
+                  "maxLength": 35
+                },
+                "amount": {
+                  "type": "integer",
+                  "minimum": -10000000000000,
+                  "maximum": 10000000000000
+                }
+              },
+              "required": [
+                "id",
+                "amount"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Các dòng từ list_a03 cùng tiền dự kiến, số nguyên VND, tối đa 50 dòng cùng Brand"
+          }
+        },
+        "required": [
+          "title",
+          "sheetUrl",
+          "approvers",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "unknown"
+            ]
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "recordIds",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "contract": {
+        "version": 1,
+        "generatorVersion": "1.6.0",
+        "sdkVersion": "0.3.2",
+        "schemaVendor": "zod",
+        "schemaPackageVersion": "4.6.5",
+        "schemaHash": "sha256:5f9b27b3173e0e37c86150b904e65bef9ec65efcf41ca0cc0548ec9b3e731bb6",
+        "fidelity": "complete",
+        "mode": "discovery",
+        "warnings": []
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "functionId": "budget_flow",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "preview_sheet",
+              "submit",
+              "approve",
+              "reject",
+              "cancel"
+            ],
+            "description": "Xem tiền Sheet, gửi luồng, đồng ý, từ chối hoặc người lập rút hồ sơ"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 35,
+            "description": "ID hồ sơ từ list_drafts; người gọi phải là người lập hoặc người được phân công duyệt"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Phiên xử lý từ list_drafts; chuỗi rỗng với hồ sơ nháp cũ chưa có phiên"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ý kiến xử lý; bắt buộc khi từ chối, chuỗi rỗng nếu không ghi chú"
+          },
+          "sheetHash": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "SHA256 bản xem trước Sheet do preview_sheet trả về; submit phải gửi đúng, hành động khác gửi chuỗi rỗng"
+          },
+          "nodes": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "userId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 150
+                }
+              },
+              "required": [
+                "label",
+                "userId",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Một đến năm node theo đúng thứ tự khi submit, userId lấy từ UserSelectorEditor.user_id; các hành động khác gửi mảng rỗng"
+          }
+        },
+        "required": [
+          "action",
+          "id",
+          "version",
+          "comment",
+          "sheetHash",
+          "nodes"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {
+        "action": [
+          "preview_sheet",
+          "submit",
+          "approve",
+          "reject",
+          "cancel"
+        ]
+      }
+    },
+    {
+      "functionId": "save_draft",
+      "functionType": 2,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180,
+            "description": "Tên hồ sơ ngân sách do người lập nhập"
+          },
+          "sheetUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Liên kết Lark Sheets nguồn hoặc chuỗi rỗng nếu nhập trực tiếp"
+          },
+          "approvers": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Tên hoặc email người duyệt đề xuất; đây chưa phải danh tính được xác thực của native Approval"
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 4,
+                  "maxLength": 35
+                },
+                "amount": {
+                  "type": "integer",
+                  "minimum": -10000000000000,
+                  "maximum": 10000000000000
+                }
+              },
+              "required": [
+                "id",
+                "amount"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Các dòng từ list_a03 cùng tiền dự kiến, số nguyên VND, tối đa 50 dòng cùng Brand"
+          }
+        },
+        "required": [
+          "title",
+          "sheetUrl",
+          "approvers",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "detail_a03",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "ID bản ghi ở Base mới từ list_a03, không phải ID nguồn"
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID bản ghi ở Base mới từ list_a03, không phải ID nguồn"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "draft_rows",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "ids",
+          "kind": "TEXT[]",
+          "nullable": false,
+          "description": "Danh sách ID A03 được chọn từ list_a03, tối đa 50 dòng"
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Danh sách ID A03 được chọn từ list_a03, tối đa 50 dòng"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_a03",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "brand",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "year",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "quarter",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "month",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "keyword",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+        },
+        {
+          "name": "offset",
+          "kind": "INT",
+          "nullable": false,
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Số dòng bỏ qua; bắt đầu 0, tăng 50 theo từng trang"
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "year": {
+            "type": "string",
+            "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "quarter": {
+            "type": "string",
+            "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "month": {
+            "type": "string",
+            "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Số dòng bỏ qua; bắt đầu 0, tăng 50 theo từng trang"
+          }
+        },
+        "required": [
+          "brand",
+          "year",
+          "quarter",
+          "month",
+          "keyword",
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "list_drafts",
+      "functionType": 1,
+      "parameters": [],
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "summary_a03",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "brand",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "year",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "quarter",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "month",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+        },
+        {
+          "name": "keyword",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "brand": {
+            "type": "string",
+            "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "year": {
+            "type": "string",
+            "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "quarter": {
+            "type": "string",
+            "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "month": {
+            "type": "string",
+            "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+          }
+        },
+        "required": [
+          "brand",
+          "year",
+          "quarter",
+          "month",
+          "keyword"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    },
+    {
+      "functionId": "workflow_context",
+      "functionType": 1,
+      "parameters": [
+        {
+          "name": "id",
+          "kind": "TEXT",
+          "nullable": false,
+          "description": "ID hồ sơ lấy từ trường id của list_drafts, chỉ hồ sơ thuộc quyền của người gọi"
+        }
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID hồ sơ lấy từ trường id của list_drafts, chỉ hồ sơ thuộc quyền của người gọi"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "parameterOptions": {}
+    }
+  ],
+  "client": true,
+  "augmentation": "none",
+  "version": 1
+}

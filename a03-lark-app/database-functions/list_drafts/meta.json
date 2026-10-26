@@ -1,0 +1,7 @@
+{
+  "name": "Hồ sơ tôi lập hoặc được phân công duyệt",
+  "description": "Chỉ đọc hồ sơ do người gọi lập hoặc người gọi được chọn trong các node duyệt. Server xác định danh tính, không nhận user ID từ client.",
+  "meta": {
+    "params": []
+  }
+}

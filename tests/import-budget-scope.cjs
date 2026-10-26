@@ -9,7 +9,7 @@ const XLSX = require("xlsx");
 // No network requests or audit-log writes are made by this regression check.
 const writes = [];
 const updates = [];
-const names = ["Brand", "Quý ngân sách", "Năm", "Tháng ngân sách", "Mã ngân sách", "Hạng mục", "Số tiền TGĐ duyệt", "Phân loại nguồn NS"];
+const names = ["Brand", "Quý ngân sách", "Năm", "Tháng ngân sách", "Mã ngân sách", "Hạng mục", "Số tiền TGĐ duyệt", "Phân loại nguồn NS", "Mã phiếu đề xuất"];
 const client = {
   listFields: async () => names.map((field_name) => ({ field_name, type: field_name === "Số tiền TGĐ duyệt" ? 2 : 1, property: {} })),
   createRecord: async (fields) => {
@@ -34,7 +34,7 @@ vm.createContext(context);
 const source = fs.readFileSync("app/lib/action.ts", "utf8");
 vm.runInContext(ts.transpile(source, { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true }), context);
 
-async function run(sheet, hasChildren = false) {
+async function run(sheet, hasChildren = false, approvalInstanceCode = "") {
   writes.length = 0;
   updates.length = 0;
   const workbook = XLSX.utils.book_new();
@@ -43,6 +43,7 @@ async function run(sheet, hasChildren = false) {
   const form = new FormData();
   form.set("file", file);
   form.set("hasChildBudgetCodes", String(hasChildren));
+  form.set("approvalInstanceCode", approvalInstanceCode);
   const result = await context.exports.importTgdBudgetExcelAction(form);
   assert.equal(result.success, true, result.message);
   return result.data;
@@ -99,6 +100,10 @@ async function main() {
   assert.equal(result.created, 1);
   assert.equal(result.updated, 1);
   assert.equal(updates[0].fields["Số tiền TGĐ duyệt"], 150);
+
+  result = await run(adjacent, false, "approval-budget-2026-01");
+  assert.equal(result.created, 4);
+  assert.ok(writes.every((row) => row["Mã phiếu đề xuất"] === "approval-budget-2026-01"));
   console.log("Import scope regression checks passed (both Excel layouts, duplicate cells and distinct contributions).");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -1,0 +1,14 @@
+{
+  "name": "Ngữ cảnh xử lý hồ sơ A03",
+  "description": "Đọc hồ sơ cùng danh tính đáng tin cậy để FaaS kiểm tra node, phiên xử lý và bản tiền trước thao tác; không dùng truy vấn không lọc để thay thế.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "ID hồ sơ lấy từ trường id của list_drafts, chỉ hồ sơ thuộc quyền của người gọi"
+      }
+    ]
+  }
+}

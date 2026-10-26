@@ -1,0 +1,1251 @@
+{
+  "baseAppUrl": "https://tsgsifizy3jj.sg.larksuite.com/baseapp/DpYlpukK7rwhddjOPfClC8Jcgae",
+  "tables": [
+    {
+      "baseToken": "Tc4qbZqpJaBWKXsQ03VlaVgzgwr",
+      "fields": {
+        "Brand": {
+          "baseType": "Text",
+          "id": "fld31iockW",
+          "name": "Brand",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Bản chốt SHA256": {
+          "baseType": "Text",
+          "id": "fld5VRzMuv",
+          "name": "Bản chốt SHA256",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Bản tiền JSON": {
+          "baseType": "Text",
+          "id": "fldnBrZsvb",
+          "name": "Bản tiền JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Bảng tính nguồn": {
+          "baseType": "Text",
+          "id": "fldUFkFXvS",
+          "name": "Bảng tính nguồn",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Kết quả đồng bộ JSON": {
+          "baseType": "Text",
+          "id": "fldZ5xfb28",
+          "name": "Kết quả đồng bộ JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Luồng duyệt JSON": {
+          "baseType": "Text",
+          "id": "fldcW7PnoT",
+          "name": "Luồng duyệt JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Lịch sử duyệt JSON": {
+          "baseType": "Text",
+          "id": "fldK4fvxZA",
+          "name": "Lịch sử duyệt JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã hồ sơ": {
+          "baseType": "Text",
+          "id": "fldsEnrCzJ",
+          "name": "Mã hồ sơ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Người duyệt 1": {
+          "baseType": "User",
+          "id": "fldqQ6DbRc",
+          "name": "Người duyệt 1",
+          "nullable": true,
+          "sqlType": {
+            "kind": "USER"
+          }
+        },
+        "Người duyệt 2": {
+          "baseType": "User",
+          "id": "fldZ1iVBWC",
+          "name": "Người duyệt 2",
+          "nullable": true,
+          "sqlType": {
+            "kind": "USER"
+          }
+        },
+        "Người duyệt 3": {
+          "baseType": "User",
+          "id": "fld9jJGdiO",
+          "name": "Người duyệt 3",
+          "nullable": true,
+          "sqlType": {
+            "kind": "USER"
+          }
+        },
+        "Người duyệt 4": {
+          "baseType": "User",
+          "id": "fldIokasjT",
+          "name": "Người duyệt 4",
+          "nullable": true,
+          "sqlType": {
+            "kind": "USER"
+          }
+        },
+        "Người duyệt 5": {
+          "baseType": "User",
+          "id": "fldgAdAnYq",
+          "name": "Người duyệt 5",
+          "nullable": true,
+          "sqlType": {
+            "kind": "USER"
+          }
+        },
+        "Người duyệt đề xuất JSON": {
+          "baseType": "Text",
+          "id": "fldJ1SGWSK",
+          "name": "Người duyệt đề xuất JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Người lập ID": {
+          "baseType": "Text",
+          "id": "fldfTnDduI",
+          "name": "Người lập ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Phiên xử lý": {
+          "baseType": "Text",
+          "id": "fldtYLowzB",
+          "name": "Phiên xử lý",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Số dòng": {
+          "baseType": "Number",
+          "id": "fldMOu4Yc5",
+          "name": "Số dòng",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Thời gian lập": {
+          "baseType": "Text",
+          "id": "fldqBA7W2e",
+          "name": "Thời gian lập",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Trạng thái": {
+          "baseType": "Text",
+          "id": "fldVVJlOjN",
+          "name": "Trạng thái",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tên hồ sơ": {
+          "baseType": "Text",
+          "id": "fldyNo3N1J",
+          "name": "Tên hồ sơ",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tổng tiền trình": {
+          "baseType": "Number",
+          "id": "fldIKNWCZg",
+          "name": "Tổng tiền trình",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tblesB2lbyj7iN9e",
+      "name": "A03. Hồ sơ trình duyệt"
+    },
+    {
+      "baseToken": "Tc4qbZqpJaBWKXsQ03VlaVgzgwr",
+      "fields": {
+        "Auto tạo a01": {
+          "baseType": "Text",
+          "id": "fldEOthoHK",
+          "name": "Auto tạo a01",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Brand": {
+          "allOptions": [
+            {
+              "id": "opttc6va6i",
+              "name": "Klairs"
+            },
+            {
+              "id": "optWFjAGIr",
+              "name": "Horus"
+            },
+            {
+              "id": "optEQxdhqX",
+              "name": "9 Wishes"
+            },
+            {
+              "id": "optIGq3CjE",
+              "name": "Beplain"
+            },
+            {
+              "id": "opt7RX4G9O",
+              "name": "Dr.G"
+            },
+            {
+              "id": "optGy7dX7o",
+              "name": "P20"
+            },
+            {
+              "id": "opthTUmD4u",
+              "name": "I'm from"
+            },
+            {
+              "id": "optficN4KT",
+              "name": "N/A"
+            },
+            {
+              "id": "optIio9O52",
+              "name": "Skin1004"
+            },
+            {
+              "id": "opthpDBI8I",
+              "name": "WAKEMAKE"
+            },
+            {
+              "id": "optFmhC6ZF",
+              "name": "Some By Mi"
+            },
+            {
+              "id": "optFE4rDc1",
+              "name": "Round Lab"
+            },
+            {
+              "id": "optquJG2UV",
+              "name": "BRINGGREEN"
+            },
+            {
+              "id": "optacN7bsX",
+              "name": "Missha"
+            },
+            {
+              "id": "opt77w4ucO",
+              "name": "Nature Republic"
+            },
+            {
+              "id": "optfJc23Cs",
+              "name": "Pyunkang Yul"
+            },
+            {
+              "id": "opt9vP8tcf",
+              "name": "Amalfi"
+            },
+            {
+              "id": "optUgo0KBu",
+              "name": "Perspirex"
+            },
+            {
+              "id": "optHHJYrIH",
+              "name": "Mediheal"
+            },
+            {
+              "id": "optfyic2A7",
+              "name": "COSRX"
+            },
+            {
+              "id": "optfNGhIck",
+              "name": "Q+A"
+            },
+            {
+              "id": "optd6WJcJp",
+              "name": "Freska"
+            },
+            {
+              "id": "optx2tl91b",
+              "name": "By Wishtrend"
+            },
+            {
+              "id": "optdRTRN9x",
+              "name": "Instituto Espanol"
+            },
+            {
+              "id": "optPTqCwRc",
+              "name": "TDIC perfume"
+            },
+            {
+              "id": "optIrIZqtx",
+              "name": "Body Natur"
+            },
+            {
+              "id": "optmxMkxwc",
+              "name": "Baddies"
+            },
+            {
+              "id": "optsVLp9ZY",
+              "name": "WJ Cosmetics"
+            },
+            {
+              "id": "optJN7VBeE",
+              "name": "Brand Test 01"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldIFezEwn",
+          "name": "Brand",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opttc6va6i",
+                "name": "Klairs"
+              },
+              {
+                "id": "optWFjAGIr",
+                "name": "Horus"
+              },
+              {
+                "id": "optEQxdhqX",
+                "name": "9 Wishes"
+              },
+              {
+                "id": "optIGq3CjE",
+                "name": "Beplain"
+              },
+              {
+                "id": "opt7RX4G9O",
+                "name": "Dr.G"
+              },
+              {
+                "id": "optGy7dX7o",
+                "name": "P20"
+              },
+              {
+                "id": "opthTUmD4u",
+                "name": "I'm from"
+              },
+              {
+                "id": "optficN4KT",
+                "name": "N/A"
+              },
+              {
+                "id": "optIio9O52",
+                "name": "Skin1004"
+              },
+              {
+                "id": "opthpDBI8I",
+                "name": "WAKEMAKE"
+              },
+              {
+                "id": "optFmhC6ZF",
+                "name": "Some By Mi"
+              },
+              {
+                "id": "optFE4rDc1",
+                "name": "Round Lab"
+              },
+              {
+                "id": "optquJG2UV",
+                "name": "BRINGGREEN"
+              },
+              {
+                "id": "optacN7bsX",
+                "name": "Missha"
+              },
+              {
+                "id": "opt77w4ucO",
+                "name": "Nature Republic"
+              },
+              {
+                "id": "optfJc23Cs",
+                "name": "Pyunkang Yul"
+              },
+              {
+                "id": "opt9vP8tcf",
+                "name": "Amalfi"
+              },
+              {
+                "id": "optUgo0KBu",
+                "name": "Perspirex"
+              },
+              {
+                "id": "optHHJYrIH",
+                "name": "Mediheal"
+              },
+              {
+                "id": "optfyic2A7",
+                "name": "COSRX"
+              },
+              {
+                "id": "optfNGhIck",
+                "name": "Q+A"
+              },
+              {
+                "id": "optd6WJcJp",
+                "name": "Freska"
+              },
+              {
+                "id": "optx2tl91b",
+                "name": "By Wishtrend"
+              },
+              {
+                "id": "optdRTRN9x",
+                "name": "Instituto Espanol"
+              },
+              {
+                "id": "optPTqCwRc",
+                "name": "TDIC perfume"
+              },
+              {
+                "id": "optIrIZqtx",
+                "name": "Body Natur"
+              },
+              {
+                "id": "optmxMkxwc",
+                "name": "Baddies"
+              },
+              {
+                "id": "optsVLp9ZY",
+                "name": "WJ Cosmetics"
+              },
+              {
+                "id": "optJN7VBeE",
+                "name": "Brand Test 01"
+              }
+            ]
+          }
+        },
+        "Check cấp NS": {
+          "baseType": "Text",
+          "id": "fld3MfmCPr",
+          "name": "Check cấp NS",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Check mã NS thay đổi": {
+          "baseType": "Number",
+          "id": "fldhC0DUX0",
+          "name": "Check mã NS thay đổi",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Check đã có A01": {
+          "baseType": "Text",
+          "id": "fld6zBJzu0",
+          "name": "Check đã có A01",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Cấp Ngân Sách (00)": {
+          "baseType": "Text",
+          "id": "fldkVZYUxW",
+          "name": "Cấp Ngân Sách (00)",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "D06 Hạng mục đề xuất": {
+          "baseType": "Text",
+          "id": "fldNeNH5R5",
+          "name": "D06 Hạng mục đề xuất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "DA NOTE": {
+          "baseType": "Text",
+          "id": "fldRVIFbGZ",
+          "name": "DA NOTE",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Dữ liệu nguồn JSON": {
+          "baseType": "Text",
+          "id": "fldlnKmmL8",
+          "name": "Dữ liệu nguồn JSON",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Hình thức đề xuất": {
+          "baseType": "Text",
+          "id": "fldvb6DG9y",
+          "name": "Hình thức đề xuất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "ID": {
+          "baseType": "Text",
+          "id": "fldtEI2HMX",
+          "name": "ID",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "ID A07": {
+          "baseType": "Text",
+          "id": "fldtUKvEIf",
+          "name": "ID A07",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "ID bản ghi nguồn": {
+          "baseType": "Text",
+          "id": "fldSjYFhkI",
+          "name": "ID bản ghi nguồn",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Khoản chi cấp 3 thuộc Q4": {
+          "baseType": "Text",
+          "id": "fldx4m819d",
+          "name": "Khoản chi cấp 3 thuộc Q4",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Khoản chi hợp lệ thủ công": {
+          "baseType": "Text",
+          "id": "fldn0aidZh",
+          "name": "Khoản chi hợp lệ thủ công",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Khoản chi hợp lệ tính riêng quý": {
+          "baseType": "Text",
+          "id": "fldMIGBeR6",
+          "name": "Khoản chi hợp lệ tính riêng quý",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Khoản ngân sách": {
+          "baseType": "Text",
+          "id": "fldyNfSXbc",
+          "name": "Khoản ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Kế toán duyệt A07": {
+          "baseType": "Text",
+          "id": "fldow8eytI",
+          "name": "Kế toán duyệt A07",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Loại ngân sách": {
+          "allOptions": [
+            {
+              "id": "opthI5kBoK",
+              "name": "Ngân sách Product Marketing"
+            },
+            {
+              "id": "opta7AF1Va",
+              "name": "Ngân sách Ecom"
+            },
+            {
+              "id": "optHj4Jz57",
+              "name": "Ngân sách Trade"
+            },
+            {
+              "id": "optmgBD9Ys",
+              "name": "Ngân sách hãng tài trợ"
+            },
+            {
+              "id": "optb4Z9iPL",
+              "name": "Ngân sách Ads"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldyOSY9W4",
+          "name": "Loại ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opthI5kBoK",
+                "name": "Ngân sách Product Marketing"
+              },
+              {
+                "id": "opta7AF1Va",
+                "name": "Ngân sách Ecom"
+              },
+              {
+                "id": "optHj4Jz57",
+                "name": "Ngân sách Trade"
+              },
+              {
+                "id": "optmgBD9Ys",
+                "name": "Ngân sách hãng tài trợ"
+              },
+              {
+                "id": "optb4Z9iPL",
+                "name": "Ngân sách Ads"
+              }
+            ]
+          }
+        },
+        "Loại đề xuất": {
+          "allOptions": [
+            {
+              "id": "opttBabv44",
+              "name": "Đề xuất ngân sách quý"
+            },
+            {
+              "id": "optQM5QUpp",
+              "name": "Đề xuất ngân sách phát sinh"
+            },
+            {
+              "id": "optxoS8gwN",
+              "name": "Đề xuất ngân sách bổ sung"
+            },
+            {
+              "id": "optDJuvmZR",
+              "name": "Đề xuất ngân sách năm"
+            },
+            {
+              "id": "optYeqek8C",
+              "name": "Đề xuất ngân sách định kỳ"
+            },
+            {
+              "id": "opt46rQDkV",
+              "name": "Lần 1"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldI9kfGAZ",
+          "name": "Loại đề xuất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opttBabv44",
+                "name": "Đề xuất ngân sách quý"
+              },
+              {
+                "id": "optQM5QUpp",
+                "name": "Đề xuất ngân sách phát sinh"
+              },
+              {
+                "id": "optxoS8gwN",
+                "name": "Đề xuất ngân sách bổ sung"
+              },
+              {
+                "id": "optDJuvmZR",
+                "name": "Đề xuất ngân sách năm"
+              },
+              {
+                "id": "optYeqek8C",
+                "name": "Đề xuất ngân sách định kỳ"
+              },
+              {
+                "id": "opt46rQDkV",
+                "name": "Lần 1"
+              }
+            ]
+          }
+        },
+        "Lần đề xuất": {
+          "allOptions": [
+            {
+              "id": "optrKX12bq",
+              "name": "Lần 1"
+            },
+            {
+              "id": "optVHwdZUh",
+              "name": "Lần 2"
+            },
+            {
+              "id": "opt6tBpsHN",
+              "name": "Lần 3"
+            },
+            {
+              "id": "optFpu7Ii4",
+              "name": "Lần 4"
+            },
+            {
+              "id": "optglmCJRD",
+              "name": "Lần 5"
+            },
+            {
+              "id": "optoQ2FnOZ",
+              "name": "Lần 6"
+            },
+            {
+              "id": "optkRWZs5K",
+              "name": "Lần 7"
+            },
+            {
+              "id": "optHbH5UHh",
+              "name": "Lần 8"
+            },
+            {
+              "id": "opttyUDfRI",
+              "name": "Lần 9"
+            },
+            {
+              "id": "optCXSlMnP",
+              "name": "Lần 10"
+            },
+            {
+              "id": "opt3mbvzgS",
+              "name": "N/A"
+            },
+            {
+              "id": "optzjcvM0S",
+              "name": "Bổ sung lần 1"
+            },
+            {
+              "id": "optNFZRVhj",
+              "name": "Bổ sung lần 2"
+            },
+            {
+              "id": "optzhLqQUN",
+              "name": "Bổ sung lần 3"
+            },
+            {
+              "id": "optlYx0pZt",
+              "name": "Bổ sung lần 4"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldOq8zjCC",
+          "name": "Lần đề xuất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "optrKX12bq",
+                "name": "Lần 1"
+              },
+              {
+                "id": "optVHwdZUh",
+                "name": "Lần 2"
+              },
+              {
+                "id": "opt6tBpsHN",
+                "name": "Lần 3"
+              },
+              {
+                "id": "optFpu7Ii4",
+                "name": "Lần 4"
+              },
+              {
+                "id": "optglmCJRD",
+                "name": "Lần 5"
+              },
+              {
+                "id": "optoQ2FnOZ",
+                "name": "Lần 6"
+              },
+              {
+                "id": "optkRWZs5K",
+                "name": "Lần 7"
+              },
+              {
+                "id": "optHbH5UHh",
+                "name": "Lần 8"
+              },
+              {
+                "id": "opttyUDfRI",
+                "name": "Lần 9"
+              },
+              {
+                "id": "optCXSlMnP",
+                "name": "Lần 10"
+              },
+              {
+                "id": "opt3mbvzgS",
+                "name": "N/A"
+              },
+              {
+                "id": "optzjcvM0S",
+                "name": "Bổ sung lần 1"
+              },
+              {
+                "id": "optNFZRVhj",
+                "name": "Bổ sung lần 2"
+              },
+              {
+                "id": "optzhLqQUN",
+                "name": "Bổ sung lần 3"
+              },
+              {
+                "id": "optlYx0pZt",
+                "name": "Bổ sung lần 4"
+              }
+            ]
+          }
+        },
+        "Mã Ngân sách ban đầu": {
+          "baseType": "Text",
+          "id": "fldhWaOUGL",
+          "name": "Mã Ngân sách ban đầu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã ngân sách": {
+          "baseType": "Text",
+          "id": "fldMlD8YTe",
+          "name": "Mã ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã ngân sách con": {
+          "baseType": "Text",
+          "id": "fldtngmv3y",
+          "name": "Mã ngân sách con",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mã phiếu đề xuất": {
+          "baseType": "Text",
+          "id": "fldIaCgUYF",
+          "name": "Mã phiếu đề xuất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Mốc sao chép": {
+          "baseType": "Text",
+          "id": "fldMdxt9L8",
+          "name": "Mốc sao chép",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Nguồn ngân sách": {
+          "baseType": "Text",
+          "id": "fldLgyIENX",
+          "name": "Nguồn ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Nguồn ngân sách xử lý thủ công": {
+          "baseType": "Text",
+          "id": "fld80zKDDX",
+          "name": "Nguồn ngân sách xử lý thủ công",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Nguồn ngân sách(D06)": {
+          "baseType": "Text",
+          "id": "fldfsMYKXd",
+          "name": "Nguồn ngân sách(D06)",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Ngày cập nhật mới nhất": {
+          "baseType": "Text",
+          "id": "fldb92UmCo",
+          "name": "Ngày cập nhật mới nhất",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Người tạo": {
+          "baseType": "Text",
+          "id": "fld7eWgwqF",
+          "name": "Người tạo",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Note": {
+          "baseType": "Text",
+          "id": "fld5QCAIfy",
+          "name": "Note",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Năm": {
+          "allOptions": [
+            {
+              "id": "optNTIrTw7",
+              "name": "2026"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldS3vyUga",
+          "name": "Năm",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "optNTIrTw7",
+                "name": "2026"
+              }
+            ]
+          }
+        },
+        "Nội dung chi tiêu": {
+          "baseType": "Text",
+          "id": "fldkOZWo96",
+          "name": "Nội dung chi tiêu",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "PCN Note": {
+          "baseType": "Text",
+          "id": "fldCRKma4s",
+          "name": "PCN Note",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Phiếu điều chuyển": {
+          "baseType": "Text",
+          "id": "fldqSftMaQ",
+          "name": "Phiếu điều chuyển",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Quý ngân sách": {
+          "allOptions": [
+            {
+              "id": "optLj6gmn2",
+              "name": "Q1/2026"
+            },
+            {
+              "id": "optPWQpvVq",
+              "name": "Q2/2026"
+            },
+            {
+              "id": "opt0zqSnEY",
+              "name": "Q3/2026"
+            },
+            {
+              "id": "optiC4nfdP",
+              "name": "Q4/2026"
+            },
+            {
+              "id": "optOiG9VPa",
+              "name": "N/A"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldngdB2gF",
+          "name": "Quý ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "optLj6gmn2",
+                "name": "Q1/2026"
+              },
+              {
+                "id": "optPWQpvVq",
+                "name": "Q2/2026"
+              },
+              {
+                "id": "opt0zqSnEY",
+                "name": "Q3/2026"
+              },
+              {
+                "id": "optiC4nfdP",
+                "name": "Q4/2026"
+              },
+              {
+                "id": "optOiG9VPa",
+                "name": "N/A"
+              }
+            ]
+          }
+        },
+        "Số tiền TGĐ duyệt": {
+          "baseType": "Number",
+          "id": "fldvvf1WXr",
+          "name": "Số tiền TGĐ duyệt",
+          "nullable": true,
+          "sqlType": {
+            "kind": "DOUBLE"
+          }
+        },
+        "Số tiền tổng hợp": {
+          "baseType": "Text",
+          "id": "fldjtt8mTW",
+          "name": "Số tiền tổng hợp",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "TGĐ duyệt ngân sách ADS": {
+          "baseType": "Text",
+          "id": "fldIqqBLWl",
+          "name": "TGĐ duyệt ngân sách ADS",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tham chiếu nguồn": {
+          "baseType": "Text",
+          "id": "fldVfD12hf",
+          "name": "Tham chiếu nguồn",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Tháng ngân sách": {
+          "allOptions": [
+            {
+              "id": "opt1ZQjTuA",
+              "name": "Tháng 1"
+            },
+            {
+              "id": "optWArGldJ",
+              "name": "Tháng 2"
+            },
+            {
+              "id": "opt3PJryOQ",
+              "name": "Tháng 3"
+            },
+            {
+              "id": "optKvbYMzx",
+              "name": "Tháng 4"
+            },
+            {
+              "id": "optLhuvxmd",
+              "name": "Tháng 5"
+            },
+            {
+              "id": "opt45MSgOC",
+              "name": "Tháng 6"
+            },
+            {
+              "id": "optmIOpAiE",
+              "name": "Tháng 7"
+            },
+            {
+              "id": "optLaPOWlQ",
+              "name": "Tháng 8"
+            },
+            {
+              "id": "optxfHQkKL",
+              "name": "Tháng 9"
+            },
+            {
+              "id": "opt8a59eqH",
+              "name": "Tháng 10"
+            },
+            {
+              "id": "optFGfoa8r",
+              "name": "Tháng 11"
+            },
+            {
+              "id": "optRLDS3Mb",
+              "name": "Tháng 12"
+            },
+            {
+              "id": "optc6BewnX",
+              "name": "N/A"
+            }
+          ],
+          "baseType": "SingleSelect",
+          "id": "fldbYnaVE2",
+          "name": "Tháng ngân sách",
+          "nullable": true,
+          "sqlType": {
+            "kind": "OPTION",
+            "options": [
+              {
+                "id": "opt1ZQjTuA",
+                "name": "Tháng 1"
+              },
+              {
+                "id": "optWArGldJ",
+                "name": "Tháng 2"
+              },
+              {
+                "id": "opt3PJryOQ",
+                "name": "Tháng 3"
+              },
+              {
+                "id": "optKvbYMzx",
+                "name": "Tháng 4"
+              },
+              {
+                "id": "optLhuvxmd",
+                "name": "Tháng 5"
+              },
+              {
+                "id": "opt45MSgOC",
+                "name": "Tháng 6"
+              },
+              {
+                "id": "optmIOpAiE",
+                "name": "Tháng 7"
+              },
+              {
+                "id": "optLaPOWlQ",
+                "name": "Tháng 8"
+              },
+              {
+                "id": "optxfHQkKL",
+                "name": "Tháng 9"
+              },
+              {
+                "id": "opt8a59eqH",
+                "name": "Tháng 10"
+              },
+              {
+                "id": "optFGfoa8r",
+                "name": "Tháng 11"
+              },
+              {
+                "id": "optRLDS3Mb",
+                "name": "Tháng 12"
+              },
+              {
+                "id": "optc6BewnX",
+                "name": "N/A"
+              }
+            ]
+          }
+        },
+        "Thời gian tạo": {
+          "baseType": "Text",
+          "id": "fldpsXC6U0",
+          "name": "Thời gian tạo",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Top Node Code (00)": {
+          "baseType": "Text",
+          "id": "fldELpNTWF",
+          "name": "Top Node Code (00)",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "rec_id": {
+          "baseType": "SystemRecordId",
+          "id": "rec_id",
+          "name": "rec_id",
+          "nullable": false,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        },
+        "Đổ dữ liệu sang \"Bảng tổng hợp ngân sách\"": {
+          "baseType": "Text",
+          "id": "fldPoQm3MV",
+          "name": "Đổ dữ liệu sang \"Bảng tổng hợp ngân sách\"",
+          "nullable": true,
+          "sqlType": {
+            "kind": "TEXT"
+          }
+        }
+      },
+      "id": "tbljA87qUBDYVHYe",
+      "name": "A03. Ngân sách được duyệt"
+    }
+  ]
+}

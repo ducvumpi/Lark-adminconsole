@@ -362,7 +362,7 @@ export default function ImportWizard({
 
   function updateFileType(
     fileName: string,
-    type: "loaiNganSach" | "loaiDeXuat" | "lanDeXuat", // 👈 thêm "lanDeXuat"
+    type: "loaiNganSach" | "loaiDeXuat" | "lanDeXuat",
     value: string
   ) {
     setFileSelections((prev) =>

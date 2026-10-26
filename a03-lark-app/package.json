@@ -1,0 +1,18 @@
+{
+  "name": "base-database-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "page",
+    "server"
+  ],
+  "scripts": {
+    "dev": "base-database-cli dev",
+    "check": "base-database-cli check --json",
+    "build:page": "npm run build --workspace page"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

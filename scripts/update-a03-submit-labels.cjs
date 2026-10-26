@@ -1,0 +1,13 @@
+const fs=require('node:fs');
+const file='a03-lark-app/page/src/BudgetApp.tsx';
+let source=fs.readFileSync(file,'utf8');
+source=source.replace('>Xem bản chốt</button>','>Mở hồ sơ / Gửi duyệt</button>');
+source=source.replace("modal==='saved'?'Bản tiền đã chốt'","modal==='saved'?'Hồ sơ & gửi duyệt'");
+source=source.replace("'Lưu bản trình nháp'","'Lưu nháp để thiết lập duyệt'");
+source=source.replace('Bản tiền đã chốt và lưu riêng cho tài khoản của bạn.','Mở hồ sơ để chọn người duyệt, chốt tiền từ Sheet và gửi duyệt.');
+source=source.replace('Hồ sơ bạn lập hoặc được phân công duyệt. Chỉ node hiện tại được xử lý; node cuối đồng ý sẽ ghi bản tiền đã chốt vào A03 của app.','Bấm “Mở hồ sơ / Gửi duyệt” ở cuối mỗi dòng. Trong hồ sơ nháp: chọn người duyệt → điền Sheet → đọc tiền → gửi duyệt. Chỉ node hiện tại được xử lý; node cuối đồng ý mới ghi A03.');
+fs.writeFileSync(file,source);
+const readme='a03-lark-app/README.md';
+let doc=fs.readFileSync(readme,'utf8');
+doc=doc.replace('Request details provide one to five sequential nodes','The request list has an explicit Open request / Submit entry. Draft details always show the submit button, disabled with prerequisite guidance until reviewers and a Sheet preview are ready. Request details provide one to five sequential nodes');
+fs.writeFileSync(readme,doc);

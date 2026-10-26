@@ -1,0 +1,46 @@
+{
+  "name": "Tra cứu A03",
+  "description": "Đọc bản sao ngân sách đã nhập, lọc theo Brand và kỳ; không dùng kết quả này làm chứng nhận Approval. Mọi thành viên được vào app có cùng quyền đọc.",
+  "meta": {
+    "params": [
+      {
+        "name": "brand",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "year",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "quarter",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "month",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "keyword",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+      },
+      {
+        "name": "offset",
+        "kind": "INT",
+        "nullable": false,
+        "minimum": 0,
+        "maximum": 1000000,
+        "description": "Số dòng bỏ qua; bắt đầu 0, tăng 50 theo từng trang"
+      }
+    ]
+  }
+}

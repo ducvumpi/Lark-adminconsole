@@ -1,0 +1,147 @@
+{
+  "name": "Xử lý luồng duyệt ngân sách A03",
+  "description": "Người lập chốt tiền từ Lark Sheets và gửi các node tuần tự; chỉ người được giao node hiện tại được duyệt hoặc từ chối. Node cuối đồng ý tự kiểm tra và ghi bản tiền vào A03 của app; kết quả không rõ dừng để đối soát, không thử lại.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "preview_sheet",
+          "submit",
+          "approve",
+          "reject",
+          "cancel"
+        ],
+        "description": "Xem tiền Sheet, gửi luồng, đồng ý, từ chối hoặc người lập rút hồ sơ"
+      },
+      "id": {
+        "type": "string",
+        "minLength": 4,
+        "maxLength": 35,
+        "description": "ID hồ sơ từ list_drafts; người gọi phải là người lập hoặc người được phân công duyệt"
+      },
+      "version": {
+        "type": "string",
+        "maxLength": 80,
+        "description": "Phiên xử lý từ list_drafts; chuỗi rỗng với hồ sơ nháp cũ chưa có phiên"
+      },
+      "comment": {
+        "type": "string",
+        "maxLength": 2000,
+        "description": "Ý kiến xử lý; bắt buộc khi từ chối, chuỗi rỗng nếu không ghi chú"
+      },
+      "sheetHash": {
+        "type": "string",
+        "maxLength": 64,
+        "description": "SHA256 bản xem trước Sheet do preview_sheet trả về; submit phải gửi đúng, hành động khác gửi chuỗi rỗng"
+      },
+      "nodes": {
+        "maxItems": 5,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "userId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150
+            }
+          },
+          "required": [
+            "label",
+            "userId",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Một đến năm node theo đúng thứ tự khi submit, userId lấy từ UserSelectorEditor.user_id; các hành động khác gửi mảng rỗng"
+      }
+    },
+    "required": [
+      "action",
+      "id",
+      "version",
+      "comment",
+      "sheetHash",
+      "nodes"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string"
+      },
+      "message": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      },
+      "sheetHash": {
+        "type": "string"
+      },
+      "sheetLines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            },
+            "before": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "proposed": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "code",
+            "before",
+            "proposed"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "status",
+      "message",
+      "version"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.6.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:28a1885a46e6b822a3ce460193ee2364a62d2f9d4ed0656cf5c58f2e635b8013",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

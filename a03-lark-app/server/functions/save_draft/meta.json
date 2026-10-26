@@ -1,0 +1,105 @@
+{
+  "name": "Lưu bản trình A03",
+  "description": "Chốt giá trị hiện tại từ bản sao A03 và số tiền đề xuất vào hồ sơ nháp của người gọi; không tạo native Approval và không thay số tiền đã duyệt.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 180,
+        "description": "Tên hồ sơ ngân sách do người lập nhập"
+      },
+      "sheetUrl": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Liên kết Lark Sheets nguồn hoặc chuỗi rỗng nếu nhập trực tiếp"
+      },
+      "approvers": {
+        "maxItems": 10,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": "Tên hoặc email người duyệt đề xuất; đây chưa phải danh tính được xác thực của native Approval"
+      },
+      "lines": {
+        "minItems": 1,
+        "maxItems": 50,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 35
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": -10000000000000,
+              "maximum": 10000000000000
+            }
+          },
+          "required": [
+            "id",
+            "amount"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Các dòng từ list_a03 cùng tiền dự kiến, số nguyên VND, tối đa 50 dòng cùng Brand"
+      }
+    },
+    "required": [
+      "title",
+      "sheetUrl",
+      "approvers",
+      "lines"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "success",
+          "partial",
+          "failed",
+          "unknown"
+        ]
+      },
+      "recordIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "status",
+      "recordIds",
+      "message"
+    ],
+    "additionalProperties": false
+  },
+  "contract": {
+    "version": 1,
+    "generatorVersion": "1.6.0",
+    "sdkVersion": "0.3.2",
+    "schemaVendor": "zod",
+    "schemaPackageVersion": "4.6.5",
+    "schemaHash": "sha256:5f9b27b3173e0e37c86150b904e65bef9ec65efcf41ca0cc0548ec9b3e731bb6",
+    "fidelity": "complete",
+    "mode": "discovery",
+    "warnings": []
+  }
+}

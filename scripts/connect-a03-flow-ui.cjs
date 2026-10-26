@@ -1,0 +1,12 @@
+const fs=require('fs'),f='a03-lark-app/page/src/BudgetApp.tsx';let s=fs.readFileSync(f,'utf8');
+function change(a,b){if(!s.includes(a))throw Error('Missing UI anchor: '+a.slice(0,55));s=s.replace(a,b);}
+change("import './budget.css';","import './budget.css';\nimport ApprovalFlow from './ApprovalFlow';");
+change('Hồ sơ nháp chưa phải phiếu Lark Approval và chưa thay đổi số tiền TGĐ duyệt.','Hồ sơ bạn lập hoặc được phân công duyệt. Chỉ node hiện tại được xử lý; node cuối đồng ý sẽ ghi bản tiền đã chốt vào A03 của app.');
+change('Tối đa 50 hồ sơ gần nhất của chính bạn. Bản tiền đã lưu không thay đổi theo bảng tính.','Tối đa 50 hồ sơ bạn lập hoặc được phân công duyệt. Thay đổi Sheet sau khi gửi không thay bản tiền đã chốt.');
+change('Hồ sơ nháp chỉ trả về cho người lập theo danh tính Lark xác thực.','Hồ sơ chỉ trả về cho người lập hoặc người được phân công trong node duyệt, theo danh tính server Lark.');
+change('Gửi native Lark Approval, xác minh người duyệt, đọc tiền từ Sheets và ghi A03 sau Approval chưa được kết nối. Số tiền duyệt ở chế độ chỉ đọc qua app. Không có nút duyệt giả hoặc ghi đè trực tiếp.','Duyệt ngay trong app: chọn từ 1–5 node tuần tự, đọc và chốt tiền từ Sheet rồi gửi. Chỉ người được chọn tại node hiện tại được đồng ý/từ chối; node cuối đồng ý sẽ kiểm tra giá trị nguồn và tự ghi A03. Đây không phải phiếu native Lark Approval. Kết nối đọc Sheet cần cấu hình server trước khi sử dụng.');
+change('Người duyệt dự kiến · chưa xác thực','Ghi chú người duyệt (không thay thế chọn node)');
+change('Link là tài liệu tham khảo; tiền lưu lấy từ lưới phía trên, chưa tự đồng bộ từ Sheet. Nếu khung bị chặn, mở bảng tính riêng.','Lưu nháp trước, rồi mở hồ sơ để thiết lập các node và đọc/chốt tiền từ Sheet. Chỉ bản tiền chốt lúc gửi mới được đưa vào luồng duyệt.');
+change('<br/>Chưa tạo native Lark Approval. Hồ sơ này không cho phép ghi A03.','<br/>Phê duyệt ngay trong app A03 theo các node bên dưới.');
+change('</div>{sheetLink(text(detail.sheet_url))&&<button','</div><ApprovalFlow key={text(detail.id)+text(detail.version)} request={detail} onUpdated={()=>{void invokeDatabaseFunction(\'list_drafts\',{}).then(result=>{const updated=rows(result);setDrafts(updated);setDetail(updated.find(item=>item.id===detail.id)||null);refresh();}).catch(()=>setModalError(\'Không tải được trạng thái mới. Đóng và mở lại hồ sơ để đối soát.\'));}}/>{sheetLink(text(detail.sheet_url))&&<button');
+fs.writeFileSync(f,s);console.log('Workflow UI connected to request details and live role-filtered queries.');

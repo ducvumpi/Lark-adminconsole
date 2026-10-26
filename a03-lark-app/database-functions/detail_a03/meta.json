@@ -1,0 +1,14 @@
+{
+  "name": "Chi tiết một dòng A03",
+  "description": "Đọc chi tiết bản sao một dòng ngân sách và dữ liệu nguồn lưu tại mốc sao chép, dùng ID do list_a03 trả về.",
+  "meta": {
+    "params": [
+      {
+        "name": "id",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "ID bản ghi ở Base mới từ list_a03, không phải ID nguồn"
+      }
+    ]
+  }
+}

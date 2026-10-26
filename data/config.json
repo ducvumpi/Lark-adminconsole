@@ -1,12 +1,12 @@
 {
-  "activeBaseId": "default",
-  "activeTableId": "table-1787198822796-h67a",
+  "activeBaseId": "base-1790837598601",
+  "activeTableId": "table-1792724195142-isj9",
   "bases": [
     {
       "id": "default",
       "name": "Base Ngân sách",
-      "appId": "cli_aab9d527eda25eea",
-      "appSecret": "AFE0gR9DCHwEiAVEGlp4rcznXXs8DHDY",
+      "appId": "cli_aa881b5fa0781eea",
+      "appSecret": "JHI7zcXxJkDQCnpXKfFmQcsquJjabbCA",
       "baseAppToken": "LycrwdzfEiva8WkbYDIl5OesgSe",
       "apiBaseUrl": "https://open.larksuite.com/open-apis",
       "tables": [
@@ -79,6 +79,11 @@
           "id": "table-1790837622862-8f6o",
           "name": "Mail 20-10",
           "tableId": "tblKkJXO1vXoGD2p"
+        },
+        {
+          "id": "table-1792724195142-isj9",
+          "name": "App Ngân sách",
+          "tableId": "tbl5pWUiQ7FpKmId"
         }
       ]
     }

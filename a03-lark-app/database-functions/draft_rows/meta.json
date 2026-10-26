@@ -1,0 +1,14 @@
+{
+  "name": "Kiểm tra dòng lập hồ sơ",
+  "description": "Đọc tối đa 50 dòng từ bản sao A03 và danh tính người gọi để server chốt tiền trong hồ sơ nháp; không xác nhận phê duyệt.",
+  "meta": {
+    "params": [
+      {
+        "name": "ids",
+        "kind": "TEXT[]",
+        "nullable": false,
+        "description": "Danh sách ID A03 được chọn từ list_a03, tối đa 50 dòng"
+      }
+    ]
+  }
+}

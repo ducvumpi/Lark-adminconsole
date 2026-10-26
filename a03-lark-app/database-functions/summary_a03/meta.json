@@ -1,0 +1,38 @@
+{
+  "name": "Tổng hợp các dòng A03",
+  "description": "Đếm và cộng số tiền trên toàn bộ các dòng khớp bộ lọc, bao gồm dòng cha/con nếu có; không tự loại trùng ngân sách phân cấp.",
+  "meta": {
+    "params": [
+      {
+        "name": "brand",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị brand từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "year",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị year từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "quarter",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị quarter từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "month",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Giá trị month từ bộ lọc A03; chuỗi rỗng để không lọc"
+      },
+      {
+        "name": "keyword",
+        "kind": "TEXT",
+        "nullable": false,
+        "description": "Từ khóa mã hoặc nội dung; chuỗi rỗng để xem tất cả"
+      }
+    ]
+  }
+}

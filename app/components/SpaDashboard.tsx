@@ -115,6 +115,7 @@ export default function SpaDashboard({
         <div className="spa-shell">
             <aside className="sidebar-nav">
                 <div className="sidebar-brand">Lark Base Manager</div>
+                <a href="/ngan-sach" className="sidebar-item">Ngân sách · A01–A07 ↗</a>
 
                 <div className="sidebar-section">
                     {tabs.map((tab) => (
