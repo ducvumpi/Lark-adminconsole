@@ -23,13 +23,6 @@ function withFramePolicy(response: NextResponse) {
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // The budget workspace uses its own per-user Lark OAuth session. Its API
-  // validates identity and Brand membership on every request, independently
-  // from the existing administrator login.
-  if (pathname === "/ngan-sach" || pathname.startsWith("/api/budget/" ) || pathname === "/api/budget") {
-    return withFramePolicy(NextResponse.next());
-  }
-
   // Bỏ qua middleware auth cookie cho route dành riêng cho bot/Botpress —
   // các route này tự xác thực bằng header x-api-key trong route handler.
   if (pathname.startsWith("/api/bot")) {
