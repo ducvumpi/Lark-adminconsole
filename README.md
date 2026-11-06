@@ -12,9 +12,13 @@ The response uses this value in `Content-Security-Policy: frame-ancestors`. If i
 
 ## Danh mục mã ngân sách
 
-Mở mục **Mã ngân sách** trên thanh bên để tra cứu 146 mã, lọc theo nhóm và tải toàn bộ danh mục JSON kèm cấp và mã cha.
+Mở mục **Mã ngân sách** trên thanh bên để tra cứu mã, khoản ngân sách, lọc theo nhóm/từ khóa và tải toàn bộ danh mục JSON.
 
-Danh sách gốc được lưu tại `data/budget-codes.json`; `app/lib/budget-codes.ts` cung cấp dữ liệu dùng chung và suy ra quan hệ cha/con từ hậu tố hai hoặc bốn chữ số. Khi cập nhật danh mục, sửa tệp JSON và build/deploy lại ứng dụng. Các mã `ADS007- 01` đến `ADS007- 05` đã được bỏ khoảng trắng thừa; hai tiền tố `GOI` và `GOO` giữ nguyên theo danh sách cung cấp.
+Danh sách mã được lưu tại `data/budget-codes.json`; tên khoản ngân sách theo mã được lưu tại `data/budget-code-budget-items.json`. `app/lib/budget-codes.ts` kết hợp hai danh mục và suy ra quan hệ cha/con từ hậu tố hai hoặc bốn chữ số. Khi cập nhật ánh xạ, sửa các tệp JSON này rồi build/deploy lại ứng dụng. Các mã `ADS007- 01` đến `ADS007- 05` đã được bỏ khoảng trắng thừa; hai tiền tố `GOI` và `GOO` giữ nguyên theo danh sách cung cấp.
+
+Khi import Excel, cột **Khoản ngân sách** được đối chiếu với tên khoản trong danh mục dùng chung để lấy **Mã ngân sách**. Tên khoản không khớp sẽ giữ lại mã ngân sách có sẵn trong file.
+
+Trong tab **Mã ngân sách**, tải file Excel lên để kiểm tra mã ở mọi sheet. Các ô mã đang trống có ánh xạ sẽ được đánh dấu và có thể tải thành một file Excel mới đã điền mã; mã hiện có không bị ghi đè.
 
 Mỗi file Excel có checkbox **File có mã ngân sách con**, mặc định được tích để giữ logic import hiện tại. Bỏ tích khi file chỉ xin mã cấp 1: mã có con trong danh mục được thêm `-00-00` (ví dụ `BOO002-00-00`), mã không có con giữ nguyên (ví dụ `BOO001`); các dòng mã con không được import ở chế độ này. Áp dụng cho cả layout tháng theo cột và Brand theo cột.
 

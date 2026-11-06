@@ -59,6 +59,7 @@ async function checkRoute() {
       if (name === "next/server") return { after: callback => scheduled.push(callback) };
       if (name.endsWith("/lark-bot")) return context.exports;
       if (name.endsWith("/lark-openai")) return { answerWithOpenAI: async () => { aiCalls++; return "Tổng ngân sách: 300."; } };
+      if (name.endsWith("/lark-openrouter")) return { answerWithOpenRouter: async (_text, options) => { aiCalls++; return options.canWrite ? "OpenRouter write" : "OpenRouter read"; } };
       if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }) };
       if (name.endsWith("/lark-client")) return { LarkBaseClient: class {
         async listFields() { return [{ field_name: "Brand", type: 1 }]; }
@@ -141,5 +142,23 @@ async function checkRoute() {
   await post(event);
   await scheduled[scheduled.length - 1]();
   assert.match(replies[replies.length - 1][1], /Không tìm thấy cột/);
+  env.LARK_AI_PROVIDER = "openrouter";
+  event.event.message.message_id = "msg-router-read";
+  event.event.message.content = JSON.stringify({ text: "Tạo bản ghi ABC" });
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  assert.equal(replies.at(-1)[1], "OpenRouter read");
+  env.LARK_BOT_WRITE_OPEN_IDS = "ou_allowed";
+  event.event.message.message_id = "msg-router-write";
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  assert.equal(replies.at(-1)[1], "OpenRouter write");
+  event.event.message.message_id = "msg-router-lost-reply";
+  failReply = true;
+  await post(event);
+  await scheduled[scheduled.length - 1]();
+  const pending = scheduled.length;
+  await post(event);
+  assert.equal(scheduled.length, pending, "Lost reply must not replay a write");
 }
 checkRoute().then(() => console.log("Lark bot checks passed"), error => { console.error(error); process.exitCode = 1; });

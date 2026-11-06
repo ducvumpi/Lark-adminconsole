@@ -6,7 +6,7 @@ function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const QUERY_TOOL = {
+export const QUERY_TOOL = {
   type: "function", name: "query_base", strict: true,
   description: "Đọc bảng Base hiện tại. Lọc AND, đếm hoặc tính tổng bằng code. Không sửa dữ liệu. Tối đa 10 kết quả liệt kê; tổng/đếm chỉ trả khi đã quét hết bảng (tối đa 5.000 dòng).",
   parameters: {

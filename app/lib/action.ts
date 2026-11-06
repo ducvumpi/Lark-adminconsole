@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import fs from "fs/promises";
 import path from "path";
 import { SESSION_COOKIE, getExpectedSessionValue } from "./auth";
-import { getRootOnlyImportCode } from "./budget-codes";
+import { getBudgetCodeForBudgetItem, getRootOnlyImportCode } from "./budget-codes";
 import { getLarkClient, LarkField, LarkRecord } from "./lark-client";
 import {
   getConfig,
@@ -3554,6 +3554,107 @@ function getVisibleSheetNames(workbook: XLSX.WorkBook): string[] {
   });
 }
 
+function resolveSourceBudgetCodeXLSX(
+  sheet: XLSX.WorkSheet,
+  row: number,
+  codeCol: number,
+  budgetItemCol: number
+): string {
+  if (budgetItemCol >= 0) {
+    const budgetItem = String(getMergedCellValueXLSX(sheet, row, budgetItemCol) ?? "").trim();
+    const mappedCode = getBudgetCodeForBudgetItem(budgetItem);
+    if (mappedCode) return mappedCode;
+  }
+
+  return normalizeBudgetCodeForComparison(
+    String(getMergedCellValueXLSX(sheet, row, codeCol) ?? "")
+  );
+}
+
+export interface BudgetCodeExcelCheckRow {
+  sheetName: string;
+  rowNumber: number;
+  codeColumn: number | null;
+  budgetItem: string;
+  currentCode: string;
+  expectedCode: string | null;
+  status: "matched" | "missing" | "mismatched" | "unmapped";
+}
+
+export interface BudgetCodeExcelCheckResult {
+  fileName: string;
+  rows: BudgetCodeExcelCheckRow[];
+}
+
+export async function checkBudgetCodeExcelMappingAction(
+  formData: FormData
+): Promise<ActionResult<BudgetCodeExcelCheckResult>> {
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { success: false, message: "Vui lòng chọn file Excel." };
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      return { success: false, message: "Chỉ hỗ trợ file Excel .xlsx hoặc .xls." };
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const rows: BudgetCodeExcelCheckRow[] = [];
+
+    for (const sheetName of getVisibleSheetNames(workbook)) {
+      const sheet = workbook.Sheets[sheetName];
+      const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+      const headers = Array.from({ length: range.e.r + 1 }, (_, row) => ({
+        row,
+        budgetItemCol: findColumnByLabelXLSX(sheet, row, "khoản ngân sách", range.e.c + 1),
+      })).filter((header) => header.budgetItemCol >= 0);
+
+      for (const header of headers) {
+        const codeCol = findColumnByLabelXLSX(sheet, header.row, "mã ngân sách", range.e.c + 1);
+        const nextHeaderRow = headers.find((candidate) => candidate.row > header.row)?.row;
+        const dataEndRow = nextHeaderRow !== undefined ? nextHeaderRow - 1 : range.e.r;
+
+        for (let row = header.row + 1; row <= dataEndRow; row++) {
+          const budgetItem = String(getMergedCellValueXLSX(sheet, row, header.budgetItemCol) ?? "").trim();
+          if (!budgetItem) continue;
+
+          const currentCode = codeCol >= 0
+            ? normalizeBudgetCodeForComparison(
+                String(getMergedCellValueXLSX(sheet, row, codeCol) ?? "")
+              )
+            : "";
+          const expectedCode = getBudgetCodeForBudgetItem(budgetItem);
+          rows.push({
+            sheetName,
+            rowNumber: row + 1,
+            codeColumn: codeCol >= 0 ? codeCol : null,
+            budgetItem,
+            currentCode,
+            expectedCode,
+            status: !expectedCode
+              ? "unmapped"
+              : !currentCode
+                ? "missing"
+                : currentCode === expectedCode
+                  ? "matched"
+                  : "mismatched",
+          });
+        }
+      }
+    }
+
+    if (rows.length === 0) {
+      return {
+        success: false,
+        message: 'Không tìm thấy dữ liệu dưới cột "Khoản ngân sách" trong file Excel.',
+      };
+    }
+
+    return { success: true, data: { fileName: file.name, rows } };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Không thể kiểm tra ánh xạ trong file Excel." };
+  }
+}
+
 /** Đọc nhanh file Excel, liệt kê tên các sheet và các nhãn "Tháng X" tìm thấy trong từng sheet.
  * Dùng để UI hiển thị checkbox và nhãn tháng theo từng sheet riêng trước khi import thật sự.
  * Không ghi gì vào Lark Base ở bước này. */
@@ -3603,6 +3704,7 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
 
       const headerSections = findAllHeaderSectionsXLSX(sheet, range.e.r, range.e.c + 1);
       for (const headerSection of headerSections) {
+        const budgetItemCol = findColumnByLabelXLSX(sheet, headerSection.row, "khoản ngân sách", range.e.c + 1);
         const nextSectionRow = headerSections
           .map((section) => section.row)
           .filter((row) => row > headerSection.row)
@@ -3610,7 +3712,12 @@ export async function listSheetsAndMonthsAction(formData: FormData): Promise<Act
         const dataEndRow = nextSectionRow !== undefined ? nextSectionRow - 1 : range.e.r;
         for (let row = headerSection.row + 1; row <= dataEndRow; row++) {
           const maNganSach = normalizeImportedBudgetCode(
-            String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
+            resolveSourceBudgetCodeXLSX(
+              sheet,
+              row,
+              headerSection.colMaNganSach,
+              budgetItemCol
+            )
           );
           if (maNganSach) {
             categorySet.add(String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim());
@@ -3886,6 +3993,7 @@ export async function importTgdBudgetExcelAction(
       const headerSections = findAllHeaderSectionsXLSX(sheet, range.e.r, range.e.c + 1);
       const tgdBlocks = findAllTgdBlocksXLSX(sheet, range.e.r, range.e.c + 1);
       for (const headerSection of headerSections) {
+        const budgetItemCol = findColumnByLabelXLSX(sheet, headerSection.row, "khoản ngân sách", range.e.c + 1);
         const nextSectionRow = headerSections
           .map((section) => section.row)
           .filter((row) => row > headerSection.row)
@@ -3930,8 +4038,11 @@ export async function importTgdBudgetExcelAction(
         }
 
         for (let row = headerSection.row + 1; row <= dataEndRow; row++) {
-          const code = normalizeBudgetCodeForComparison(
-            String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
+          const code = resolveSourceBudgetCodeXLSX(
+            sheet,
+            row,
+            headerSection.colMaNganSach,
+            budgetItemCol
           );
           if (code) {
             sourceBudgetCodes.add(code);
@@ -4064,6 +4175,7 @@ export async function importTgdBudgetExcelAction(
           continue;
         }
 
+        const khoanNganSachColIdx = findColumnByLabelXLSX(sheet, headerSection.row, "khoản ngân sách", maxCol + 1);
         const subHeaderRow = headerSection.row + 1;
         const monthScanEndCol = getTgdBlockEndCol(tgdBlocks, block, maxCol + 1, 8);
 
@@ -4136,8 +4248,11 @@ export async function importTgdBudgetExcelAction(
           }
 
           for (let row = dataStartRow; row <= dataEndRow; row++) {
-            const sourceCode = normalizeBudgetCodeForComparison(
-              String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
+            const sourceCode = resolveSourceBudgetCodeXLSX(
+              sheet,
+              row,
+              headerSection.colMaNganSach,
+              khoanNganSachColIdx
             );
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
@@ -4328,8 +4443,6 @@ export async function importTgdBudgetExcelAction(
           if (brandColumns.length === 0) continue;
           sheetHadValidBlock = true;
 
-          const khoanNganSachColIdx = findColumnByLabelXLSX(sheet, headerSection.row, "khoản ngân sách", maxCol + 1);
-
           // Preview 5 dòng thô đầu tiên để soi lệch cột/hàng
           if (sheetDebug.dataPreview.length === 0) {
             for (let previewRow = dataStartRow; previewRow <= Math.min(dataStartRow + 5, dataEndRow); previewRow++) {
@@ -4343,8 +4456,11 @@ export async function importTgdBudgetExcelAction(
           }
 
           for (let row = dataStartRow; row <= dataEndRow; row++) {
-            const sourceCode = normalizeBudgetCodeForComparison(
-              String(getMergedCellValueXLSX(sheet, row, headerSection.colMaNganSach) ?? "")
+            const sourceCode = resolveSourceBudgetCodeXLSX(
+              sheet,
+              row,
+              headerSection.colMaNganSach,
+              khoanNganSachColIdx
             );
             sheetDebug.dataRowsScanned++;
             const hangMuc = String(getMergedCellValueXLSX(sheet, row, headerSection.colHangMuc) ?? "").trim();
@@ -4685,13 +4801,6 @@ export async function undoImportBatchAction(
     return { success: false, message: err.message || "Hoàn tác batch thất bại." };
   }
 }
-
-
-
-
-
-
-
 
 
 

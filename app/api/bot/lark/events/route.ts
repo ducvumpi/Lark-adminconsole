@@ -4,6 +4,7 @@ import { BOT_HELP, decodeLarkEvent, formatBaseRecords, larkErrorCodes, normalize
 import { LarkBaseClient } from "@/app/lib/lark-client";
 import { getConfig } from "@/app/lib/config";
 import { answerWithOpenAI } from "@/app/lib/lark-openai";
+import { answerWithOpenRouter } from "@/app/lib/lark-openrouter";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
   after(async () => {
     const client = new LarkBaseClient({ signal: AbortSignal.timeout(55000) });
     let reply = BOT_HELP;
+    let mayHaveWritten = false;
     try {
       const command = parseBaseCommand(text);
       if (command) {
@@ -85,7 +87,12 @@ export async function POST(request: Request) {
           reply = formatBaseRecords(result.items, result.hasMore);
         }
       } else {
-        reply = await answerWithOpenAI(text);
+        const useOpenRouter = process.env.LARK_AI_PROVIDER === "openrouter" || Boolean(process.env.OPENROUTER_API_KEY?.trim());
+        const writers = (process.env.LARK_BOT_WRITE_OPEN_IDS || "").split(",").map(id => id.trim()).filter(Boolean);
+        mayHaveWritten = useOpenRouter && writers.includes(sender.sender_id.open_id);
+        reply = useOpenRouter
+          ? await answerWithOpenRouter(text, { canWrite: mayHaveWritten })
+          : await answerWithOpenAI(text);
       }
     } catch (error) {
       console.error("Lark bot: lookup failed", { messageId: id, ...larkErrorCodes(error) });
@@ -95,7 +102,8 @@ export async function POST(request: Request) {
       await client.replyText(id, reply, createHash("sha256").update(id).digest("hex").slice(0, 40));
       console.info("Lark bot: replied", { messageId: id });
     } catch (error) {
-      seen.delete(id);
+      // A lost reply must not replay a potentially successful mutation.
+      if (!mayHaveWritten) seen.delete(id);
       console.error("Lark bot: failed to send reply", { messageId: id, ...larkErrorCodes(error) });
     }
   });

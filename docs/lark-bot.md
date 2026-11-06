@@ -18,7 +18,41 @@ Webhook: `https://<domain-cua-ban>/api/bot/lark/events`.
 
 Bot đọc Base/bảng đang chọn trong Cài đặt, trả tối đa 10 dòng, tối đa 12 cột/dòng và rút gọn giá trị dài cho lệnh `base`. Điều kiện `Tên cột=Giá trị` khớp chính xác, hỗ trợ cột văn bản và lựa chọn đơn. Bot bỏ qua chat nhóm và tài khoản ngoài danh sách. Tài khoản trong danh sách có thể đọc mọi cột của bảng đang chọn.
 
-## Hỏi đáp bằng OpenAI
+## OpenRouter: đọc, tạo và sửa bản ghi, không cần MCP
+
+Bot gọi trực tiếp OpenRouter Chat Completions và API Lark. Không cần chạy `mcp-server.ts` hay kết nối MCP. Model chọn công cụ; code kiểm tra tham số, thực hiện API và trả kết quả. Đây là luồng agent cho Base, chưa phải bộ tính năng đầy đủ của AnyGen.
+
+Thêm các biến phía máy chủ rồi triển khai lại:
+
+```env
+LARK_AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=<key OpenRouter>
+OPENROUTER_MODEL=<model ID vendor/model hỗ trợ tool calling>
+LARK_BOT_ALLOWED_OPEN_IDS=ou_nguoi_dung_1,ou_nguoi_dung_2
+LARK_BOT_WRITE_OPEN_IDS=ou_nguoi_dung_1
+```
+
+`OPENROUTER_MODEL` là bắt buộc, dùng ID chính xác từ danh sách model OpenRouter. Không dùng biến `NEXT_PUBLIC_*` cho key. Khi có `OPENROUTER_API_KEY` hoặc chọn `LARK_AI_PROVIDER=openrouter`, tin nhắn AI dùng OpenRouter; lỗi cấu hình không tự chuyển dữ liệu sang OpenAI. Lệnh `base` vẫn đọc trực tiếp Lark.
+
+Người gửi phải nằm trong `LARK_BOT_ALLOWED_OPEN_IDS`; muốn tạo/sửa phải đồng thời nằm trong `LARK_BOT_WRITE_OPEN_IDS`. Danh sách ghi trống chỉ cho phép đọc. Ứng dụng Lark cần quyền tạo/sửa bản ghi và quyền chỉnh sửa bảng Base tương ứng, ngoài các quyền nhận/gửi tin nhắn. Phát hành lại quyền ứng dụng nếu cần.
+
+Ví dụ (thay tên cột và recordId theo bảng thật):
+
+- `Tạo bản ghi mới: Tên = ABC, Số tiền = 1500000`.
+- `Tìm bản ghi Tên = ABC rồi sửa Số tiền thành 2000000`.
+- `Sửa bản ghi recXXXX: Trạng thái = Đã duyệt`.
+
+Mỗi tin nhắn tối đa một lần tạo/sửa thành công và tối đa ba lượt công cụ trong 40 giây. Bot thực hiện ghi trực tiếp theo yêu cầu, chưa có bước xem trước/xác nhận trong chat. Sửa cần recordId người dùng đưa trong tin nhắn hoặc kết quả tra cứu hoàn chỉnh có đúng một bản ghi; nếu nhiều kết quả, cần chỉ rõ recordId trong yêu cầu tiếp theo. Không lưu hội thoại. Ghi hỗ trợ văn bản, số, lựa chọn đơn có sẵn, ngày Unix milliseconds, checkbox và điện thoại; chưa ghi người dùng, tệp đính kèm, liên kết, lựa chọn nhiều, công thức hay xóa bản ghi. Không tự tạo lựa chọn mới. Chưa hỗ trợ xóa giá trị ô bằng null.
+
+Thông tin gửi tới OpenRouter và nhà cung cấp model gồm yêu cầu, tên/kiểu cột, lựa chọn có sẵn và kết quả công cụ cần thiết; không gửi App Secret/token Lark. Chính sách lưu trữ phụ thuộc OpenRouter và nhà cung cấp model, không áp dụng cam kết `store:false` của luồng OpenAI bên dưới.
+
+Kết quả ghi được trả trực tiếp từ code sau khi API thành công, không gọi lại model để ghi lần hai. Nếu API ghi mất kết nối, bot báo chưa xác minh kết quả: kiểm tra Base trước khi gửi lại. Nếu gửi trả lời Lark thất bại sau tác vụ có quyền ghi, tiến trình giữ dấu chống trùng để không tự thực hiện lại cùng sự kiện. Chống trùng vẫn chỉ ở bộ nhớ một tiến trình trong một giờ, chưa bảo đảm ghi đúng một lần khi có nhiều máy chủ hoặc khởi động lại; triển khai cần độ tin cậy cao phải bổ sung hàng đợi và kho chống trùng dùng chung.
+
+Kiểm tra mô phỏng: `node tests/lark-openrouter.cjs`, `node tests/lark-openai.cjs`, `node tests/lark-bot.cjs`. Sau triển khai, thử tạo/sửa một bản ghi thử nghiệm, đối chiếu dữ liệu thực và kiểm tra tài khoản chỉ đọc không thể ghi.
+
+Tham khảo: [OpenRouter tool calling](https://openrouter.ai/docs/guides/features/tool-calling).
+
+## Hỏi đáp bằng OpenAI (luồng cũ, chỉ đọc)
 
 Trên Vercel → Settings → Environment Variables, thêm cho môi trường Production rồi triển khai mã mới:
 
