@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { BOT_HELP, decodeLarkEvent, formatBaseRecords, larkErrorCodes, normalizeBotText, parseBaseCommand } from "@/app/lib/lark-bot";
 import { LarkBaseClient } from "@/app/lib/lark-client";
-import { getConfig } from "@/app/lib/config";
+import { getConfig, getConfigStorage } from "@/app/lib/config";
 import { answerWithOpenAI } from "@/app/lib/lark-openai";
 import { answerWithOpenRouter } from "@/app/lib/lark-openrouter";
 
@@ -90,8 +90,11 @@ export async function POST(request: Request) {
         const useOpenRouter = process.env.LARK_AI_PROVIDER === "openrouter" || Boolean(process.env.OPENROUTER_API_KEY?.trim());
         const writers = (process.env.LARK_BOT_WRITE_OPEN_IDS || "").split(",").map(id => id.trim()).filter(Boolean);
         mayHaveWritten = useOpenRouter && writers.includes(sender.sender_id.open_id);
+        const storage = useOpenRouter ? getConfigStorage() : undefined;
+        const activeBase = storage?.bases.find(base => base.id === storage.activeBaseId) ?? storage?.bases[0];
+        const activeTable = activeBase?.tables.find(table => table.id === storage?.activeTableId) ?? activeBase?.tables[0];
         reply = useOpenRouter
-          ? await answerWithOpenRouter(text, { canWrite: mayHaveWritten })
+          ? await answerWithOpenRouter(text, { canWrite: mayHaveWritten, tableName: activeTable?.name })
           : await answerWithOpenAI(text);
       }
     } catch (error) {

@@ -67,6 +67,20 @@ Bot trả mã lỗi và hướng dẫn theo nguyên nhân; log `Lark OpenRouter 
 | 429 | Giới hạn lượt gọi, kể cả quota model miễn phí; chờ hoặc chọn model phù hợp. |
 | 5xx | Nhà cung cấp đang lỗi/không khả dụng; thử lại sau. |
 
+Nếu chat thường được nhưng truy vấn Base thất bại, xem log `Lark OpenRouter: operation failed` với `stage`, `round`, `reason`:
+
+- `output_limit`: model trả `finish_reason=length`. Token suy luận cũng có thể dùng hết ngân sách trước khi hoàn tất công cụ/trả lời. Mặc định mỗi lượt đã tăng từ 1600 lên 4096 token; tùy chọn `OPENROUTER_MAX_OUTPUT_TOKENS` nhận số nguyên từ 1024 đến 8192. Không chạy công cụ hoặc hiển thị kết quả bị cắt. Không thêm tham số reasoning bắt buộc vì không phải endpoint nào cũng hỗ trợ.
+- `tool_budget`: model gọi nhiều công cụ cùng lượt hoặc vượt ba lượt công cụ; bot không thực thi các lệnh đó.
+- `invalid_response` / `invalid_tool`: model trả cấu trúc không hợp lệ. Tham số JSON sai có thể được phản hồi lại model để sửa trong giới hạn lượt hiện có.
+- `base_transport`: lỗi đọc schema hoặc API truy vấn Base; kiểm tra quyền, bảng đang chọn và kết nối Lark.
+- `model_transport` / `timeout`: lỗi kết nối model hoặc vượt thời gian 40 giây. Bot không tự thử lại thao tác ghi.
+
+Lọc ngày hỗ trợ type `5` (ngày), `1001` (thời gian tạo), `1002` (thời gian sửa). Type `1003`/`1004` là người tạo/sửa, không lọc như ngày. Khoảng “hôm qua” được tính bằng code theo Asia/Ho_Chi_Minh, từ 00:00 hôm qua đến trước 00:00 hôm nay. Bot nhận tên bảng đang chọn từ cấu hình, không tự chuyển sang bảng khác theo tên trong tin nhắn.
+
+“Ngân sách tháng 11 tôi import hôm qua” khác với “tổng tháng 11 của các bản ghi tạo hôm qua”: import có thể cập nhật bản ghi có sẵn. Bot hiện không có công cụ đọc lịch sử import hoặc xác định người thực hiện import; cần làm rõ đợt import/danh sách bản ghi, hoặc người dùng xác nhận dùng thời gian tạo làm tiêu chí thay thế. Chưa tự xác định đợt import từ câu hỏi này. Không đưa ra tổng tháng rồi gọi đó là tổng import hôm qua.
+
+Tham khảo: [OpenRouter về token suy luận và giới hạn đầu ra](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+
 `im.message.message_read_v1` và `im.chat.access_event.bot_p2p_chat_entered_v1` bị bỏ qua là bình thường. Bot chỉ xử lý `im.message.receive_v1`. Log `replied` nghĩa là đã gửi tin nhắn qua Lark thành công, kể cả khi nội dung trả lời là thông báo lỗi OpenRouter.
 
 ## Hỏi đáp bằng OpenAI (luồng cũ, chỉ đọc)

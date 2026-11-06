@@ -53,10 +53,10 @@ export const FIELD_TYPE_LABEL: Record<number, string> = {
   18: "Lookup",
   19: "Công thức",
   20: "Công thức/Rollup",
-  1001: "Người tạo",
-  1002: "Thời gian tạo",
-  1003: "Người sửa cuối",
-  1004: "Thời gian sửa cuối",
+  1001: "Thời gian tạo",
+  1002: "Thời gian sửa cuối",
+  1003: "Người tạo",
+  1004: "Người sửa cuối",
   1005: "Số tự động",
 };
 

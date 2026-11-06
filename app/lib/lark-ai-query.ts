@@ -128,7 +128,7 @@ function validateQuery(input: unknown, fields: LarkField[]): Query {
     if (!field) throw new BaseQueryError("Không tìm thấy cột lọc.");
     const isNumeric = field.type === 2;
     const isComputed = COMPUTED_TYPES.includes(field.type);
-    const isDate = [5, 1002, 1004].includes(field.type);
+    const isDate = [5, 1001, 1002].includes(field.type);
     if (!isNumeric && !isComputed && !isDate && !TEXT_TYPES.includes(field.type)) throw new BaseQueryError(`Chưa hỗ trợ lọc kiểu cột “${field.field_name}”.`);
     if ((isNumeric || isDate) && (filter.operator === "contains" || numeric(filter.value) === null)) {
       throw new BaseQueryError(`Điều kiện lọc cột “${field.field_name}” cần giá trị số${isDate ? " theo Unix milliseconds" : ""}. Đây là lỗi bộ lọc, không phải lỗi hỗ trợ cột tính tổng.`);
@@ -149,7 +149,7 @@ function matches(record: LarkRecord, filter: Condition, field: LarkField) {
   const raw = isComputed ? computedScalar(decoded, field.field_name) : decoded;
   const computedNumericComparison = isComputed && (
     !["equals", "contains"].includes(filter.operator) || (filter.operator === "equals" && typeof raw === "number" && numeric(filter.value) !== null));
-  if (field.type === 2 || [5, 1002, 1004].includes(field.type) || computedNumericComparison) {
+  if (field.type === 2 || [5, 1001, 1002].includes(field.type) || computedNumericComparison) {
     const left = numeric(raw);
     const right = numeric(filter.value);
     if (left === null || right === null) {

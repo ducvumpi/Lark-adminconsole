@@ -13,9 +13,9 @@ const query = load("app/lib/lark-ai-query.ts");
 const openai = load("app/lib/lark-openai.ts", { require: name => name === "./lark-client" ? {} : name === "./lark-ai-query" ? query : require(name) });
 const env = { OPENROUTER_API_KEY: "offline-key", OPENROUTER_MODEL: "vendor/model" };
 const logs = [];
-const { answerWithOpenRouter, validateWrite } = load("app/lib/lark-openrouter.ts", {
+const { answerWithOpenRouter, validateWrite, dateContext } = load("app/lib/lark-openrouter.ts", {
   process: { env }, console: { error: (...args) => logs.push(args) },
-  require: name => name === "./lark-client" ? {} : name === "./lark-ai-query" ? query : name === "./lark-openai" ? openai : require(name),
+  require: name => name === "./lark-client" ? { FIELD_TYPE_LABEL: {} } : name === "./lark-ai-query" ? query : name === "./lark-openai" ? openai : require(name),
 });
 const fields = [
   { field_name: "Name", type: 1 }, { field_name: "Amount", type: 2 },
@@ -52,6 +52,15 @@ function api(messages, bodies = []) {
   };
 }
 async function main() {
+  const dates = dateContext(new Date("2026-11-05T18:00:00Z"));
+  assert.equal(dates.today, "2026-11-06", "Relative dates must use Vietnam time, not UTC");
+  assert.equal(dates.yesterdayStart, Date.parse("2026-11-05T00:00:00+07:00"));
+  assert.equal(dates.yesterdayEndExclusive, Date.parse("2026-11-06T00:00:00+07:00"));
+  const contextBodies = [];
+  await answerWithOpenRouter("Ngân sách tôi import hôm qua trong A03?", { canWrite: false, tableName: "A03", client: client(), fetch: api([{ role: "assistant", content: "Bạn có mã đợt import không?" }], contextBodies) });
+  assert.match(contextBodies[0].messages[0].content, /"A03"/);
+  assert.match(contextBodies[0].messages[0].content, /không chứng minh thời gian import/);
+  assert.match(contextBodies[0].messages[0].content, /yesterdayEndExclusive/);
   const ids = new Set(["recOne"]);
   assert.equal(validateWrite(update, fields, ids).values.Amount, 123);
   assert.throws(() => validateWrite(update, fields, new Set()), /recordId/);
@@ -113,8 +122,30 @@ async function main() {
   const parallel = client();
   const multi = tool("write_base", create);
   multi.tool_calls.push({ ...multi.tool_calls[0], id: "call2" });
-  assert.match(await answerWithOpenRouter("Tạo ABC", { canWrite: true, client: parallel, fetch: api([multi]) }), /Chưa hoàn tất/);
+  assert.match(await answerWithOpenRouter("Tạo ABC", { canWrite: true, client: parallel, fetch: api([multi]) }), /quá nhiều công cụ/);
   assert.equal(parallel.writes.length, 0, "Multiple calls must be rejected before mutation");
+  const truncated = client();
+  assert.match(await answerWithOpenRouter("Tổng hôm qua", { canWrite: true, client: truncated, fetch: async () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "partial text", tool_calls: [tool("write_base", create).tool_calls[0]] } }] })) }), /hết giới hạn token/);
+  assert.equal(truncated.writes.length, 0, "Truncated responses must never execute even a complete-looking write");
+  assert.equal(logs.at(-1)[1].reason, "output_limit");
+  const broken = tool("query_base", queryArgs);
+  broken.tool_calls[0].function.arguments = "{bad JSON SECRET";
+  const repairedBodies = [];
+  await answerWithOpenRouter("Tính tổng", { canWrite: false, client: client(), fetch: api([broken, { role: "assistant", content: "Hãy làm rõ yêu cầu." }], repairedBodies) });
+  assert.match(JSON.parse(repairedBodies[1].messages.at(-1).content).error, /JSON hợp lệ/);
+  assert.doesNotMatch(JSON.stringify(logs), /SECRET/);
+  const failingReader = client();
+  failingReader.listRecords = async () => { throw new Error("SECRET transport"); };
+  assert.match(await answerWithOpenRouter("Tra cứu", { canWrite: false, client: failingReader, fetch: api([tool("query_base", queryArgs)]) }), /Chưa đọc được dữ liệu Base/);
+  assert.equal(logs.at(-1)[1].reason, "base_transport");
+  assert.equal(logs.at(-1)[1].stage, "tool");
+  for (const setting of [undefined, "1024", "8192", "999999", "bad", "2000.5"]) {
+    if (setting === undefined) delete env.OPENROUTER_MAX_OUTPUT_TOKENS;
+    else env.OPENROUTER_MAX_OUTPUT_TOKENS = setting;
+    const bodies = [];
+    await answerWithOpenRouter("Test", { canWrite: false, client: client(), fetch: api([{ role: "assistant", content: "OK" }], bodies) });
+    assert.equal(bodies[0].max_tokens, ["1024", "8192"].includes(setting) ? Number(setting) : 4096);
+  }
   delete env.OPENROUTER_MODEL;
   assert.match(await answerWithOpenRouter("test", { canWrite: false, fetch: async () => { throw new Error("Must not call"); } }), /Chưa cấu hình/);
   console.log("Lark OpenRouter checks passed (offline, no API calls)");

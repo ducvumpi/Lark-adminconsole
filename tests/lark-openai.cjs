@@ -83,6 +83,19 @@ async function main() {
     { action: "count", sumField: null, columns: [], filters: [{ field: "Ngày", operator: "gte", value: "1767225600000" }] });
   assert.equal(dates.count, 1);
 
+  const systemFields = [{ field_name: "Created", type: 1001 }, { field_name: "Modified", type: 1002 }, { field_name: "Editor", type: 1004 }, { field_name: "Amount", type: 2 }];
+  const start = Date.parse("2026-11-05T00:00:00+07:00");
+  const end = Date.parse("2026-11-06T00:00:00+07:00");
+  const systemRows = [start - 1, start, end - 1, end].map((time, i) => ({ record_id: "time" + i, fields: { Created: time, Modified: time, Amount: 100 } }));
+  for (const field of ["Created", "Modified"]) {
+    const yesterday = await queryBase(reader([{ items: systemRows, hasMore: false }]), systemFields, {
+      action: "sum", sumField: "Amount", columns: [], filters: [{ field, operator: "gte", value: String(start) }, { field, operator: "lt", value: String(end) }],
+    });
+    assert.equal(yesterday.sum, 200, "System timestamps include start of local day and exclude next midnight");
+    assert.equal(yesterday.count, 2);
+  }
+  await assert.rejects(queryBase(reader([]), systemFields, { action: "count", sumField: null, columns: [], filters: [{ field: "Editor", operator: "gte", value: String(start) }] }), /Chưa hỗ trợ lọc/);
+
   const computedFields = [
     { field_name: "Quý", type: 20 }, { field_name: "Tháng", type: 19 },
     { field_name: "Tổng cha con", type: 20 },

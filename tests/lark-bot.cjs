@@ -60,7 +60,7 @@ async function checkRoute() {
       if (name.endsWith("/lark-bot")) return context.exports;
       if (name.endsWith("/lark-openai")) return { answerWithOpenAI: async () => { aiCalls++; return "Tổng ngân sách: 300."; } };
       if (name.endsWith("/lark-openrouter")) return { answerWithOpenRouter: async (_text, options) => { aiCalls++; return options.canWrite ? "OpenRouter write" : "OpenRouter read"; } };
-      if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }) };
+      if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }), getConfigStorage: () => ({ bases: [{ id: "base", tables: [{ id: "table", name: "A03" }] }], activeBaseId: "base", activeTableId: "table" }) };
       if (name.endsWith("/lark-client")) return { LarkBaseClient: class {
         async listFields() { return [{ field_name: "Brand", type: 1 }]; }
         async listRecords() { reads++; return { items: [{ fields: { Brand: "ABC" } }], hasMore: false }; }
