@@ -52,6 +52,23 @@ Kiểm tra mô phỏng: `node tests/lark-openrouter.cjs`, `node tests/lark-opena
 
 Tham khảo: [OpenRouter tool calling](https://openrouter.ai/docs/guides/features/tool-calling).
 
+### OpenRouter báo lỗi dù đã có key/model
+
+Bot trả mã lỗi và hướng dẫn theo nguyên nhân; log `Lark OpenRouter request failed` có `httpStatus`, `apiCode` (nếu có) và `reason`, không ghi key hay nội dung lỗi thô.
+
+| Mã/lý do | Cách xử lý |
+| --- | --- |
+| 404 / `unsupported_parameters` | Không có endpoint hỗ trợ đủ tham số. Đã bỏ `strict` và `parallel_tool_calls` khỏi yêu cầu OpenRouter để tương thích các endpoint như Nemotron free; triển khai lại mã mới. Code vẫn xác thực schema và chặn nhiều công cụ trong cùng lượt. |
+| 404 / `no_endpoint` hoặc `invalid_model` | Kiểm tra model ID chính xác, model còn hoạt động và hỗ trợ tools; kiểm tra cài đặt định tuyến. |
+| `data_policy` | Không có nhà cung cấp đáp ứng chính sách Privacy hiện tại; kiểm tra model/chính sách, không tự động nới chính sách dữ liệu. |
+| 401 | Key không hợp lệ/đã vô hiệu hóa; kiểm tra biến môi trường đúng môi trường triển khai. |
+| 402 | Kiểm tra credits và giới hạn chi tiêu của key. |
+| 403 | Kiểm tra quyền truy cập, giới hạn ngân sách và guardrails. |
+| 429 | Giới hạn lượt gọi, kể cả quota model miễn phí; chờ hoặc chọn model phù hợp. |
+| 5xx | Nhà cung cấp đang lỗi/không khả dụng; thử lại sau. |
+
+`im.message.message_read_v1` và `im.chat.access_event.bot_p2p_chat_entered_v1` bị bỏ qua là bình thường. Bot chỉ xử lý `im.message.receive_v1`. Log `replied` nghĩa là đã gửi tin nhắn qua Lark thành công, kể cả khi nội dung trả lời là thông báo lỗi OpenRouter.
+
 ## Hỏi đáp bằng OpenAI (luồng cũ, chỉ đọc)
 
 Trên Vercel → Settings → Environment Variables, thêm cho môi trường Production rồi triển khai mã mới:

@@ -12,8 +12,9 @@ function load(file, extra = {}) {
 const query = load("app/lib/lark-ai-query.ts");
 const openai = load("app/lib/lark-openai.ts", { require: name => name === "./lark-client" ? {} : name === "./lark-ai-query" ? query : require(name) });
 const env = { OPENROUTER_API_KEY: "offline-key", OPENROUTER_MODEL: "vendor/model" };
+const logs = [];
 const { answerWithOpenRouter, validateWrite } = load("app/lib/lark-openrouter.ts", {
-  process: { env }, console: { error() {} },
+  process: { env }, console: { error: (...args) => logs.push(args) },
   require: name => name === "./lark-client" ? {} : name === "./lark-ai-query" ? query : name === "./lark-openai" ? openai : require(name),
 });
 const fields = [
@@ -39,7 +40,11 @@ function api(messages, bodies = []) {
     assert.equal(options.headers.Authorization, "Bearer offline-key");
     const body = JSON.parse(options.body);
     assert.equal(body.model, "vendor/model");
-    assert.equal(body.parallel_tool_calls, false);
+    // Endpoints such as Nemotron free reject the extra strict/parallel routing
+    // requirements with 404 even though they support ordinary function calling.
+    assert.equal(Object.hasOwn(body, "parallel_tool_calls"), false);
+    assert.equal(Object.hasOwn(body.tools[0].function, "strict"), false);
+    assert.equal(body.provider.require_parameters, true);
     bodies.push(body);
     const message = messages[index++];
     assert.ok(message, "Unexpected extra inference / write retry");
@@ -84,6 +89,32 @@ async function main() {
   const explicit = client();
   assert.match(await answerWithOpenRouter("Sửa recOne thành ABC", { canWrite: true, client: explicit, fetch: api([tool("write_base", update)]) }), /Đã cập nhật/);
   assert.match(await answerWithOpenRouter("test", { canWrite: false, client: client(), fetch: async () => new Response("", { status: 429 }) }), /hạn mức/);
+  for (const [status, message, expected, reason] of [
+    [401, "Invalid key offline-key", /401.*API key/, "authentication"],
+    [402, "Insufficient credits", /402.*credits/, "credits"],
+    [403, "Forbidden", /403.*từ chối/, "forbidden"],
+    [404, "No endpoints found that can handle the requested parameters", /404.*tham số/, "unsupported_parameters"],
+    [404, "No endpoints found matching your data policy", /404.*chính sách dữ liệu/, "data_policy"],
+    [400, "not a valid model ID", /400.*Model ID/, "invalid_model"],
+    [404, "Not found", /404.*Không tìm thấy/, "no_endpoint"],
+    [400, "Invalid request", /400.*tham số/, "invalid_request"],
+    [429, "Rate limited", /429.*giới hạn/, "rate_limit"],
+    [503, "No provider", /503.*không khả dụng/, "provider_unavailable"],
+  ]) {
+    const output = await answerWithOpenRouter("test", { canWrite: false, client: client(), fetch: async () => new Response(JSON.stringify({ error: { code: status, message, metadata: { raw: "SECRET PROMPT offline-key" } } }), { status }) });
+    assert.match(output, expected);
+    assert.equal(logs.at(-1)[1].reason, reason);
+    assert.equal(logs.at(-1)[1].httpStatus, status);
+    assert.doesNotMatch(output, /offline-key|SECRET/);
+  }
+  assert.doesNotMatch(JSON.stringify(logs), /offline-key|SECRET|Invalid key/);
+  assert.match(await answerWithOpenRouter("test", { canWrite: false, client: client(), fetch: async () => new Response(JSON.stringify({ error: { code: 429, message: "Rate limited" } }), { status: 200 }) }), /429.*giới hạn/);
+  assert.match(await answerWithOpenRouter("test", { canWrite: false, client: client(), fetch: async () => new Response("<html>SECRET</html>", { status: 502 }) }), /502/);
+  const parallel = client();
+  const multi = tool("write_base", create);
+  multi.tool_calls.push({ ...multi.tool_calls[0], id: "call2" });
+  assert.match(await answerWithOpenRouter("Tạo ABC", { canWrite: true, client: parallel, fetch: api([multi]) }), /Chưa hoàn tất/);
+  assert.equal(parallel.writes.length, 0, "Multiple calls must be rejected before mutation");
   delete env.OPENROUTER_MODEL;
   assert.match(await answerWithOpenRouter("test", { canWrite: false, fetch: async () => { throw new Error("Must not call"); } }), /Chưa cấu hình/);
   console.log("Lark OpenRouter checks passed (offline, no API calls)");
