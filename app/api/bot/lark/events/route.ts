@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { BOT_HELP, decodeLarkEvent, formatBaseRecords, larkErrorCodes, normalizeBotText, parseBaseCommand } from "@/app/lib/lark-bot";
 import { LarkBaseClient } from "@/app/lib/lark-client";
-import { getConfig, getConfigStorage } from "@/app/lib/config";
+import { getBotConfig } from "@/app/lib/lark-bot-config";
+import { createBotTableAccess, formatBotTables } from "@/app/lib/lark-bot-tables";
+import { BaseQueryError } from "@/app/lib/lark-ai-query";
 import { answerWithOpenAI } from "@/app/lib/lark-openai";
 import { answerWithOpenRouter } from "@/app/lib/lark-openrouter";
 
@@ -33,9 +35,14 @@ export async function POST(request: Request) {
     console.info("Lark bot: ignored", { reason: "unsupported_event_type", eventType: payload.header?.event_type });
     return Response.json({});
   }
-  // Reject events for a different app, including after switching the active Base.
-  if (payload.header?.app_id !== getConfig().appId) {
-    console.warn("Lark bot: ignored", { reason: "app_id_mismatch", receivedAppId: payload.header?.app_id, configuredAppId: getConfig().appId });
+  const botConfig = getBotConfig();
+  if (!botConfig.appId || !botConfig.appSecret) {
+    console.error("Lark bot: not configured", { reason: "bot_credentials_missing" });
+    return Response.json({ error: "Bot credentials not configured" }, { status: 503 });
+  }
+  // Bot identity is pinned to server credentials, independent of import settings.
+  if (payload.header?.app_id !== botConfig.appId) {
+    console.warn("Lark bot: ignored", { reason: "app_id_mismatch", receivedAppId: payload.header?.app_id, configuredAppId: botConfig.appId });
     return Response.json({});
   }
   const { message, sender } = payload.event ?? {};
@@ -65,41 +72,47 @@ export async function POST(request: Request) {
   seen.set(id, Date.now() + 3600000);
   console.info("Lark bot: accepted", metadata);
   after(async () => {
-    const client = new LarkBaseClient({ signal: AbortSignal.timeout(55000) });
+    const client = new LarkBaseClient({ config: botConfig, signal: AbortSignal.timeout(55000) });
+    const tables = createBotTableAccess(botConfig, text, AbortSignal.timeout(40000));
     let reply = BOT_HELP;
     let mayHaveWritten = false;
     try {
       const command = parseBaseCommand(text);
-      if (command) {
-        const reader = new LarkBaseClient({ signal: AbortSignal.timeout(30000) });
+      const namedTable = text.match(/^\/?base\s+([^=\r\n]+)$/i)?.[1]?.trim();
+      if (/^\/?tables$/i.test(text)) {
+        reply = formatBotTables(await tables.listTables());
+      } else if (command || namedTable) {
+        const opened = await tables.openTable({ table: namedTable || "" });
+        const reader = opened.client;
         let filter: string | undefined;
-        if (command.field) {
-          const fields = await reader.listFields();
-          const field = fields.find(field => field.field_name === command.field);
+        if (command?.field) {
+          const field = opened.fields.find(field => field.field_name === command.field);
           if (!field || ![1, 3].includes(field.type)) {
             reply = "Không tìm thấy cột văn bản/lựa chọn đơn phù hợp. Kiểm tra tên cột trong Base.";
           } else {
             filter = `CurrentValue.[${field.field_name}]=${JSON.stringify(command.value)}`;
           }
         }
-        if (!command.field || filter) {
+        if (!command?.field || filter) {
           const result = await reader.listRecords({ pageSize: 10, filter });
-          reply = formatBaseRecords(result.items, result.hasMore);
+          reply = `Bảng ${opened.table.name}\n` + formatBaseRecords(result.items, result.hasMore);
         }
       } else {
         const useOpenRouter = process.env.LARK_AI_PROVIDER === "openrouter" || Boolean(process.env.OPENROUTER_API_KEY?.trim());
         const writers = (process.env.LARK_BOT_WRITE_OPEN_IDS || "").split(",").map(id => id.trim()).filter(Boolean);
         mayHaveWritten = useOpenRouter && writers.includes(sender.sender_id.open_id);
-        const storage = useOpenRouter ? getConfigStorage() : undefined;
-        const activeBase = storage?.bases.find(base => base.id === storage.activeBaseId) ?? storage?.bases[0];
-        const activeTable = activeBase?.tables.find(table => table.id === storage?.activeTableId) ?? activeBase?.tables[0];
-        reply = useOpenRouter
-          ? await answerWithOpenRouter(text, { canWrite: mayHaveWritten, tableName: activeTable?.name })
-          : await answerWithOpenAI(text);
+        if (useOpenRouter) {
+          reply = await answerWithOpenRouter(text, { canWrite: mayHaveWritten, tables });
+        } else {
+          // Legacy OpenAI still receives an explicitly resolved bot client; never
+          // allow its default client to read the import UI configuration.
+          const opened = await tables.openTable({ table: "" });
+          reply = await answerWithOpenAI(text, { client: opened.client });
+        }
       }
     } catch (error) {
       console.error("Lark bot: lookup failed", { messageId: id, ...larkErrorCodes(error) });
-      reply = "Chưa đọc được Base. Vui lòng kiểm tra cấu hình, quyền đọc Base của ứng dụng và bảng đang chọn.";
+      reply = error instanceof BaseQueryError ? error.message : "Chưa đọc được Base. Kiểm tra cấu hình riêng của bot, link Base và quyền ứng dụng Lark; không cần đổi bảng import.";
     }
     try {
       await client.replyText(id, reply, createHash("sha256").update(id).digest("hex").slice(0, 40));

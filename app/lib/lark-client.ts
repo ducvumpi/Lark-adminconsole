@@ -5,6 +5,8 @@ export interface LarkRecord {
   fields: Record<string, unknown>;
 }
 
+export interface LarkTable { table_id: string; name: string }
+
 export interface LarkField {
   field_id: string;
   field_name: string;
@@ -213,6 +215,31 @@ export class LarkBaseClient {
       throw new LarkApiError("Chưa cấu hình Base App Token / Table ID. Vào trang Cài đặt để nhập.", undefined, "base_table_missing");
     }
     return `/bitable/v1/apps/${baseAppToken}/tables/${tableId}${suffix}`;
+  }
+
+  async listTables(): Promise<LarkTable[]> {
+    const headers = await this.authHeader();
+    if (!this.config.baseAppToken) throw new LarkApiError("Missing bot Base token", undefined, "base_table_missing");
+    const tables: LarkTable[] = [];
+    const tokens = new Set<string>();
+    let pageToken: string | undefined;
+    for (let page = 0; page < 20; page++) {
+      const res = await this.http.get(`/bitable/v1/apps/${encodeURIComponent(this.config.baseAppToken)}/tables`, {
+        headers, params: { page_size: 100, ...(pageToken ? { page_token: pageToken } : {}) },
+      });
+      if (res.data.code !== 0) throw new LarkApiError("List tables failed", res.data.code);
+      const data = res.data.data;
+      if (!Array.isArray(data?.items)) throw new Error("Invalid table list");
+      for (const table of data.items) {
+        if (typeof table.table_id !== "string" || !/^tbl[a-zA-Z0-9]+$/.test(table.table_id) || typeof table.name !== "string") throw new Error("Invalid table metadata");
+        tables.push({ table_id: table.table_id, name: table.name });
+      }
+      if (!data.has_more) return tables;
+      if (typeof data.page_token !== "string" || !data.page_token || tokens.has(data.page_token)) throw new Error("Invalid table pagination");
+      pageToken = data.page_token;
+      tokens.add(data.page_token);
+    }
+    throw new Error("Table discovery limit exceeded");
   }
 
   async listFields(): Promise<LarkField[]> {

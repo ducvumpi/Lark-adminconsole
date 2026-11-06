@@ -15,8 +15,14 @@ const axiosMock = {
       active = configB;
       return { data: { code: 0, tenant_access_token: "fake-token", expire: 7200 } };
     },
-    get: async path => {
+    get: async (path, requestOptions) => {
       calls.push({ baseURL: options.baseURL, path });
+      if (path.endsWith("/tables")) {
+        assert.equal(requestOptions.params.page_size, 100);
+        return { data: { code: 0, data: requestOptions.params.page_token
+          ? { items: [{ table_id: "tblA03", name: "A03" }], has_more: false }
+          : { items: [{ table_id: "tblA01", name: "A01" }], has_more: true, page_token: "next" } } };
+      }
       if (path.includes("bad-approval")) {
         const error = new Error("Request failed with status code 400");
         error.isAxiosError = true;
@@ -78,6 +84,8 @@ async function main() {
     pinned.getApprovalInstance("bad-approval"),
     /HTTP 400, code 1390001\): Approval instance not found/
   );
+  const discovered = await pinned.listTables();
+  assert.deepEqual(Array.from(discovered, table => table.table_id), ["tblA01", "tblA03"]);
   console.log("Lark client config and Approval lookup/error handling checks passed (offline)");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

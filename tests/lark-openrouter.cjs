@@ -15,7 +15,7 @@ const env = { OPENROUTER_API_KEY: "offline-key", OPENROUTER_MODEL: "vendor/model
 const logs = [];
 const { answerWithOpenRouter, validateWrite, dateContext } = load("app/lib/lark-openrouter.ts", {
   process: { env }, console: { error: (...args) => logs.push(args) },
-  require: name => name === "./lark-client" ? { FIELD_TYPE_LABEL: {} } : name === "./lark-ai-query" ? query : name === "./lark-openai" ? openai : require(name),
+  require: name => name === "./lark-client" ? { FIELD_TYPE_LABEL: {} } : name === "./lark-ai-query" ? query : name === "./lark-openai" ? openai : ["./lark-bot-tables", "./lark-bot-config"].includes(name) ? {} : require(name),
 });
 const fields = [
   { field_name: "Name", type: 1 }, { field_name: "Amount", type: 2 },
@@ -56,6 +56,40 @@ async function main() {
   assert.equal(dates.today, "2026-11-06", "Relative dates must use Vietnam time, not UTC");
   assert.equal(dates.yesterdayStart, Date.parse("2026-11-05T00:00:00+07:00"));
   assert.equal(dates.yesterdayEndExclusive, Date.parse("2026-11-06T00:00:00+07:00"));
+  const chosen = client();
+  const discoveryBodies = [];
+  const tables = {
+    listTables: async () => [{ baseToken: "baseOne", tableId: "tblA03", name: "A03" }],
+    openTable: async args => { assert.equal(args.table, "A03"); return { table: { baseToken: "baseOne", tableId: "tblA03", name: "A03" }, fields, client: chosen }; },
+  };
+  const discoveryQuery = { action: "sum", filters: [], columns: [], sumField: "Amount" };
+  const result = await answerWithOpenRouter("Tổng tiền A03", { canWrite: false, tables, fetch: api([
+    tool("list_tables", {}), tool("open_table", { table: "A03", baseToken: null }), tool("query_base", discoveryQuery), { role: "assistant", content: "Đã tra cứu A03." },
+  ], discoveryBodies) });
+  assert.equal(result, "Đã tra cứu A03.");
+  assert.deepEqual(discoveryBodies[0].tools.map(tool => tool.function.name), ["list_tables", "open_table"]);
+  assert.ok(discoveryBodies[2].tools.some(tool => tool.function.name === "query_base"));
+  assert.ok(!discoveryBodies[2].tools.some(tool => tool.function.name === "write_base"));
+  const unselected = client();
+  const blockedBodies = [];
+  await answerWithOpenRouter("Tổng tiền", { canWrite: true, tables: { ...tables, openTable: async () => { throw Error("Should not open"); } }, fetch: api([
+    tool("write_base", create), { role: "assistant", content: "Cần chọn bảng." },
+  ], blockedBodies) });
+  assert.equal(unselected.writes.length, 0);
+  assert.match(JSON.parse(blockedBodies[1].messages.at(-1).content).error, /không được phép/);
+  const firstTable = client();
+  await answerWithOpenRouter("Tìm ABC rồi mở bảng khác và sửa", { canWrite: true, tables: {
+    ...tables, openTable: async args => {
+      if (args.table === "missing") throw new query.BaseQueryError("Không tìm thấy bảng");
+      return { table: { name: "A03", tableId: "tblA03", baseToken: "baseOne" }, fields, client: firstTable };
+    },
+  }, fetch: api([
+    tool("open_table", { table: "A03" }),
+    tool("query_base", { action: "list", sumField: null, columns: [], filters: [] }),
+    tool("open_table", { table: "missing" }), tool("write_base", update),
+    { role: "assistant", content: "Cần chọn bảng lại." },
+  ]) });
+  assert.equal(firstTable.writes.length, 0, "Failed selection must not leave a prior table writable");
   const contextBodies = [];
   await answerWithOpenRouter("Ngân sách tôi import hôm qua trong A03?", { canWrite: false, tableName: "A03", client: client(), fetch: api([{ role: "assistant", content: "Bạn có mã đợt import không?" }], contextBodies) });
   assert.match(contextBodies[0].messages[0].content, /"A03"/);

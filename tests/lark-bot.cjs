@@ -58,10 +58,23 @@ async function checkRoute() {
     require: (name) => {
       if (name === "next/server") return { after: callback => scheduled.push(callback) };
       if (name.endsWith("/lark-bot")) return context.exports;
+      if (name.endsWith("/lark-ai-query")) return { BaseQueryError: class extends Error {} };
+      if (name.endsWith("/lark-bot-config")) return { getBotConfig: () => ({ appId: "app", appSecret: "fake", baseAppToken: "base", tableId: "", baseTokens: ["base"] }) };
+      if (name.endsWith("/lark-bot-tables")) return {
+        createBotTableAccess: () => ({
+          listTables: async () => [{ name: "A03", tableId: "tblA03", baseToken: "base" }],
+          openTable: async () => ({ table: { name: "A03" }, fields: [{ field_name: "Brand", type: 1 }], client: {
+            listFields: async () => [{ field_name: "Brand", type: 1 }],
+            listRecords: async () => { reads++; return { items: [{ fields: { Brand: "ABC" } }], hasMore: false }; },
+          } }),
+        }),
+        formatBotTables: () => "A03 | tblA03",
+      };
       if (name.endsWith("/lark-openai")) return { answerWithOpenAI: async () => { aiCalls++; return "Tổng ngân sách: 300."; } };
       if (name.endsWith("/lark-openrouter")) return { answerWithOpenRouter: async (_text, options) => { aiCalls++; return options.canWrite ? "OpenRouter write" : "OpenRouter read"; } };
-      if (name.endsWith("/config")) return { getConfig: () => ({ appId: "app" }), getConfigStorage: () => ({ bases: [{ id: "base", tables: [{ id: "table", name: "A03" }] }], activeBaseId: "base", activeTableId: "table" }) };
+      if (name.endsWith("/config")) throw new Error("Bot must not read import configuration");
       if (name.endsWith("/lark-client")) return { LarkBaseClient: class {
+        constructor(options) { assert.equal(options.config.appId, "app"); assert.equal(options.config.tableId, ""); }
         async listFields() { return [{ field_name: "Brand", type: 1 }]; }
         async listRecords() { reads++; return { items: [{ fields: { Brand: "ABC" } }], hasMore: false }; }
         async replyText(...args) {

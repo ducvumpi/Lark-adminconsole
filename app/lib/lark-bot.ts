@@ -33,7 +33,7 @@ export function decodeLarkEvent(raw: string, headers: Headers, token: string, en
   return payload;
 }
 
-export const BOT_HELP = "Tra cứu Base đang chọn trong Cài đặt:\nbase — xem 10 dòng đầu\nbase Brand=ABC — lọc chính xác theo cột văn bản\nbase Mã ngân sách=ADS001\nMỗi lần trả tối đa 10 dòng. Hiện hỗ trợ lọc cột văn bản và lựa chọn đơn.";
+export const BOT_HELP = "Bot Base độc lập với cấu hình import:\ntables — xem danh sách bảng trực tiếp từ Lark\nbase A03 — xem 10 dòng đầu bảng A03\nHoặc hỏi: Tổng ngân sách tháng 11 trong A03?\nGửi link Base nếu cần truy cập Base khác. Mỗi tin nhắn cần nêu rõ bảng.";
 
 export function normalizeBotText(text: string, mentions: unknown): string {
   if (Array.isArray(mentions)) {
@@ -84,5 +84,5 @@ export function formatBaseRecords(items: { fields: Record<string, unknown> }[], 
   };
   const rows = items.map((item, i) => `${i + 1}. ` + Object.entries(item.fields).slice(0, 12)
     .map(([key, value]) => `${key.slice(0, 80)}: ${valueText(value).slice(0, 160)}`).join(" | "));
-  return (`Base/bảng đang chọn — ${items.length} dòng${hasMore ? " (còn dữ liệu, hãy thêm điều kiện lọc)" : ""}.\nMỗi dòng hiển thị tối đa 12 cột; giá trị dài được rút gọn.\n\n` + rows.join("\n\n")).slice(0, 10000);
+  return (`Kết quả — ${items.length} dòng${hasMore ? " (còn dữ liệu, hãy thêm điều kiện lọc)" : ""}.\nMỗi dòng hiển thị tối đa 12 cột; giá trị dài được rút gọn.\n\n` + rows.join("\n\n")).slice(0, 10000);
 }

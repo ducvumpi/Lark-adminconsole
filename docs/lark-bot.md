@@ -1,136 +1,102 @@
-# Nhận kết quả Base qua bot Lark
+# Bot Lark độc lập với cấu hình import
 
-Webhook: `https://<domain-cua-ban>/api/bot/lark/events`.
+Webhook: `https://<domain>/api/bot/lark/events`. Bot gọi trực tiếp OpenRouter và API Lark, không cần MCP. Runtime không đọc `data/config.json`, `activeBaseId`, `activeTableId` hoặc `LARK_TABLE_ID` của giao diện import.
 
-1. Dùng ứng dụng Lark tự xây dựng có bật Bot, cùng App ID/App Secret với Base đang chọn trong trang Cài đặt. Webhook bot nhóm dạng Incoming Webhook không nhận được lệnh tra cứu.
-2. Cấp quyền đọc bản ghi Base (`bitable:app:readonly` hoặc quyền đọc tương ứng trong Developer Console), gửi tin nhắn bot (`im:message:send_as_bot`) và nhận tin nhắn riêng (`im:message.p2p_msg:readonly`). Cấp quyền truy cập Base cho ứng dụng, phát hành phiên bản và hoàn thành phê duyệt quyền nếu được yêu cầu.
-3. Thiết lập các biến môi trường phía máy chủ rồi khởi động lại ứng dụng:
+## Cấu hình riêng
 
-   ```env
-   LARK_VERIFICATION_TOKEN=<Verification Token trong Events & Callbacks>
-   LARK_ENCRYPT_KEY=<Encrypt Key nếu bật mã hóa; nếu không thì bỏ biến này>
-   LARK_BOT_ALLOWED_OPEN_IDS=ou_nguoi_dung_1,ou_nguoi_dung_2
-   ```
-
-   Open ID phải thuộc cùng ứng dụng; lấy qua thông tin người dùng/sự kiện của ứng dụng Lark. Danh sách trống sẽ chặn mọi truy vấn dữ liệu. Không gửi App Secret hoặc Verification Token trong chat.
-4. Trong Events & Callbacks, chọn gửi sự kiện tới máy chủ, nhập URL HTTPS ở trên và đăng ký `im.message.receive_v1`. Verification Token/Encrypt Key phải khớp với máy chủ.
-5. Tài khoản được cho phép mở chat riêng với bot và gửi `base`. Thử thêm `base Brand=ABC` hoặc `base Mã ngân sách=ADS001`.
-
-Bot đọc Base/bảng đang chọn trong Cài đặt, trả tối đa 10 dòng, tối đa 12 cột/dòng và rút gọn giá trị dài cho lệnh `base`. Điều kiện `Tên cột=Giá trị` khớp chính xác, hỗ trợ cột văn bản và lựa chọn đơn. Bot bỏ qua chat nhóm và tài khoản ngoài danh sách. Tài khoản trong danh sách có thể đọc mọi cột của bảng đang chọn.
-
-## OpenRouter: đọc, tạo và sửa bản ghi, không cần MCP
-
-Bot gọi trực tiếp OpenRouter Chat Completions và API Lark. Không cần chạy `mcp-server.ts` hay kết nối MCP. Model chọn công cụ; code kiểm tra tham số, thực hiện API và trả kết quả. Đây là luồng agent cho Base, chưa phải bộ tính năng đầy đủ của AnyGen.
-
-Thêm các biến phía máy chủ rồi triển khai lại:
+Thiết lập các biến máy chủ sau, rồi khởi động lại/deploy:
 
 ```env
-LARK_AI_PROVIDER=openrouter
-OPENROUTER_API_KEY=<key OpenRouter>
-OPENROUTER_MODEL=<model ID vendor/model hỗ trợ tool calling>
+LARK_BOT_APP_ID=<App ID của ứng dụng bật Bot>
+LARK_BOT_APP_SECRET=<App Secret của cùng ứng dụng>
+LARK_BOT_BASE_APP_TOKENS=<Base token 1>,<Base token 2>
+LARK_VERIFICATION_TOKEN=<Verification Token>
+LARK_ENCRYPT_KEY=<Encrypt Key nếu bật mã hóa; nếu không thì bỏ biến>
 LARK_BOT_ALLOWED_OPEN_IDS=ou_nguoi_dung_1,ou_nguoi_dung_2
 LARK_BOT_WRITE_OPEN_IDS=ou_nguoi_dung_1
+LARK_AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=<key OpenRouter>
+OPENROUTER_MODEL=<ID vendor/model hỗ trợ tool calling>
 ```
 
-`OPENROUTER_MODEL` là bắt buộc, dùng ID chính xác từ danh sách model OpenRouter. Không dùng biến `NEXT_PUBLIC_*` cho key. Khi có `OPENROUTER_API_KEY` hoặc chọn `LARK_AI_PROVIDER=openrouter`, tin nhắn AI dùng OpenRouter; lỗi cấu hình không tự chuyển dữ liệu sang OpenAI. Lệnh `base` vẫn đọc trực tiếp Lark.
+Base token lấy từ `/base/TOKEN` trong URL Base, không phải tableId. Danh sách Base có thể để trống nếu người dùng gửi link Base trong mỗi yêu cầu. Bot gọi API liệt kê bảng trực tiếp, không lấy danh sách bảng đã nhập trong giao diện import. Quyền ứng dụng trên Lark quyết định khả năng truy cập thực tế.
 
-Người gửi phải nằm trong `LARK_BOT_ALLOWED_OPEN_IDS`; muốn tạo/sửa phải đồng thời nằm trong `LARK_BOT_WRITE_OPEN_IDS`. Danh sách ghi trống chỉ cho phép đọc. Ứng dụng Lark cần quyền tạo/sửa bản ghi và quyền chỉnh sửa bảng Base tương ứng, ngoài các quyền nhận/gửi tin nhắn. Phát hành lại quyền ứng dụng nếu cần.
+Ưu tiên biến `LARK_BOT_*`; nếu chưa có thì App ID/Secret và Base token có thể dùng `LARK_APP_ID`, `LARK_APP_SECRET`, `LARK_BASE_APP_TOKEN` từ môi trường máy chủ. **Không fallback về bảng đang chọn trong giao diện.** `LARK_BOT_BASE_APP_TOKEN` (số ít) cũng được hỗ trợ. `LARK_BOT_TABLE_ID` là bảng mặc định tùy chọn riêng của bot; tuyệt đối không dùng `LARK_TABLE_ID`. `LARK_BOT_API_BASE_URL` tùy chọn cho API Lark/Feishu (mặc định `https://open.larksuite.com/open-apis`).
 
-Ví dụ (thay tên cột và recordId theo bảng thật):
+Để chuyển cấu hình đang có một lần sang môi trường cục bộ, chạy `node scripts/setup-lark-bot.cjs`. Script sao chép App ID/Secret và các Base cùng ứng dụng vào `.env.local`, không sao chép bảng đang chọn, không ghi đè biến đã có và không in secret. Sau bước này thay đổi bảng import không thay đổi bot. Trên Vercel, thêm các biến `LARK_BOT_*` tương ứng vào Production Environment Variables rồi redeploy; `.env.local` không được commit/upload.
 
-- `Tạo bản ghi mới: Tên = ABC, Số tiền = 1500000`.
-- `Tìm bản ghi Tên = ABC rồi sửa Số tiền thành 2000000`.
-- `Sửa bản ghi recXXXX: Trạng thái = Đã duyệt`.
+Không đặt key/secret trong biến `NEXT_PUBLIC_*` hoặc tin nhắn. Khi không có App ID/Secret độc lập, webhook trả 503 cho sự kiện tin nhắn. Handshake challenge vẫn xác thực bằng Verification Token. App ID trong sự kiện phải khớp App ID cố định của bot.
 
-Mỗi tin nhắn tối đa một lần tạo/sửa thành công và tối đa ba lượt công cụ trong 40 giây. Bot thực hiện ghi trực tiếp theo yêu cầu, chưa có bước xem trước/xác nhận trong chat. Sửa cần recordId người dùng đưa trong tin nhắn hoặc kết quả tra cứu hoàn chỉnh có đúng một bản ghi; nếu nhiều kết quả, cần chỉ rõ recordId trong yêu cầu tiếp theo. Không lưu hội thoại. Ghi hỗ trợ văn bản, số, lựa chọn đơn có sẵn, ngày Unix milliseconds, checkbox và điện thoại; chưa ghi người dùng, tệp đính kèm, liên kết, lựa chọn nhiều, công thức hay xóa bản ghi. Không tự tạo lựa chọn mới. Chưa hỗ trợ xóa giá trị ô bằng null.
+## Quyền Lark và nhận sự kiện
 
-Thông tin gửi tới OpenRouter và nhà cung cấp model gồm yêu cầu, tên/kiểu cột, lựa chọn có sẵn và kết quả công cụ cần thiết; không gửi App Secret/token Lark. Chính sách lưu trữ phụ thuộc OpenRouter và nhà cung cấp model, không áp dụng cam kết `store:false` của luồng OpenAI bên dưới.
+Ứng dụng phải bật Bot, có quyền gửi tin nhắn (`im:message:send_as_bot`), nhận tin nhắn riêng (`im:message.p2p_msg:readonly`) và đọc metadata/bản ghi Base. Để ghi, cấp thêm quyền tạo/sửa bản ghi và quyền chỉnh sửa Base tương ứng. Phát hành ứng dụng và phê duyệt quyền nếu Lark yêu cầu. Đăng ký `im.message.receive_v1` với URL webhook trên.
 
-Kết quả ghi được trả trực tiếp từ code sau khi API thành công, không gọi lại model để ghi lần hai. Nếu API ghi mất kết nối, bot báo chưa xác minh kết quả: kiểm tra Base trước khi gửi lại. Nếu gửi trả lời Lark thất bại sau tác vụ có quyền ghi, tiến trình giữ dấu chống trùng để không tự thực hiện lại cùng sự kiện. Chống trùng vẫn chỉ ở bộ nhớ một tiến trình trong một giờ, chưa bảo đảm ghi đúng một lần khi có nhiều máy chủ hoặc khởi động lại; triển khai cần độ tin cậy cao phải bổ sung hàng đợi và kho chống trùng dùng chung.
+Người gửi phải thuộc `LARK_BOT_ALLOWED_OPEN_IDS`; trống thì chặn mọi truy vấn. Muốn tạo/sửa phải đồng thời thuộc `LARK_BOT_WRITE_OPEN_IDS`; danh sách ghi trống chỉ cho đọc. Chỉ hỗ trợ chat riêng và tin nhắn văn bản. Quyền ứng dụng đầy đủ không thay thế danh sách tài khoản được dùng bot.
 
-Kiểm tra mô phỏng: `node tests/lark-openrouter.cjs`, `node tests/lark-openai.cjs`, `node tests/lark-bot.cjs`. Sau triển khai, thử tạo/sửa một bản ghi thử nghiệm, đối chiếu dữ liệu thực và kiểm tra tài khoản chỉ đọc không thể ghi.
+## Dùng trong chat
 
-Tham khảo: [OpenRouter tool calling](https://openrouter.ai/docs/guides/features/tool-calling).
+- `tables`: liệt kê tên, tableId và Base trực tiếp từ Lark.
+- `base A03`: đọc tối đa 10 dòng đầu của bảng có tên/mã A03.
+- `base tblXXXX`: chọn chính xác bằng tableId.
+- `Tổng cột Số tiền TGĐ duyệt của tháng 11 năm 2026 trong A03?`
+- `Tạo bản ghi trong A03: Nội dung chi tiêu = ABC, Số tiền TGĐ duyệt = 1500000`.
+- `Trong A03, tìm Mã ngân sách = ABC rồi sửa Note thành Đã kiểm tra`.
+- Gửi `https://tenant.larksuite.com/base/TOKEN?table=tblXXXX` cùng yêu cầu để dùng Base/bảng khác mà bot có quyền truy cập. Bot chỉ lấy token và tableId từ link hợp lệ trên `larksuite.com`/`feishu.cn`; không tải URL tùy ý.
 
-### OpenRouter báo lỗi dù đã có key/model
+`base` không có tên bảng chỉ chạy khi có bảng mặc định riêng, link chỉ rõ bảng, hoặc Base có đúng một bảng. Nhiều bảng thì phải chỉ rõ, không tự chọn bảng đầu tiên. Lệnh cũ `base Brand=ABC` áp dụng cùng quy tắc đó; dùng câu hỏi tự nhiên nếu cần tên bảng và bộ lọc cùng lúc.
 
-Bot trả mã lỗi và hướng dẫn theo nguyên nhân; log `Lark OpenRouter request failed` có `httpStatus`, `apiCode` (nếu có) và `reason`, không ghi key hay nội dung lỗi thô.
+OpenRouter có công cụ `list_tables`, `open_table`, `query_base`, `write_base`. Model mở bảng, nhận schema thật rồi truy vấn/ghi. Chỉ chấp nhận tên khớp chính xác, mã đầu tên như `A03. ...`, hoặc tableId thật. Nếu trùng tên ở nhiều Base, cần tableId và Base token. Base mới phải có trong cấu hình bot hoặc được người dùng đưa link trong tin nhắn; model không tự mở token lấy từ nội dung bản ghi. Không có công cụ liệt kê toàn bộ Base trong tổ chức chỉ từ quyền ứng dụng; cần Base token/link để bắt đầu khám phá bảng.
 
-| Mã/lý do | Cách xử lý |
+Mỗi tin nhắn độc lập, không lưu bảng/hội thoại theo người dùng. Chuyển bảng xóa các recordId suy ra từ truy vấn bảng trước. Nếu mở bảng mới thất bại, bảng trước không còn được dùng để ghi. Không chỉnh sửa cấu hình import và không chuyển bảng import khi bot mở bảng.
+
+## Giới hạn và kết quả ghi
+
+OpenRouter tối đa 6 lượt model, 5 lượt công cụ, mỗi lượt đúng một công cụ, trong 40 giây. Mỗi tin nhắn tối đa một lần tạo/sửa thành công, không tự retry ghi hoặc gọi model lần nữa sau ghi. Chỉ sửa recordId người dùng cung cấp hoặc truy vấn hoàn chỉnh trả đúng một bản ghi. Không có công cụ xóa hoặc chạy code. Không có bước xem trước/xác nhận trong chat.
+
+Ghi hỗ trợ văn bản, số, lựa chọn đơn có sẵn, ngày Unix milliseconds, checkbox và điện thoại; tối đa 20 cột/lần. Không tự tạo option, ghi công thức, người dùng, tệp hoặc xóa giá trị bằng null. Khi API ghi mất kết nối, kiểm tra Base trước khi gửi lại vì kết quả có thể đã ghi thành công.
+
+Truy vấn hỗ trợ list/count/sum, AND tối đa 8 điều kiện; số/ngày dùng so sánh, văn bản/lựa chọn dùng equals/contains. List tối đa 10 dòng × 8 cột, giá trị tối đa 300 ký tự. Quét tối đa 10 trang × 500 dòng ứng viên; count/sum không trả kết quả một phần. Bộ lọc lựa chọn đơn phù hợp được đẩy xuống API để giảm số dòng. Không tự loại trùng hay loại bỏ ngân sách cha/con.
+
+Type `1001` là thời gian tạo, `1002` là thời gian sửa, `1003`/`1004` là người tạo/sửa. “Hôm qua” được code tính theo Asia/Ho_Chi_Minh, từ 00:00 hôm qua đến trước 00:00 hôm nay. Bot chưa đọc lịch sử import hoặc xác định người import: ngày tạo bản ghi không chứng minh ngày import vì import có thể cập nhật dòng cũ. Với câu “tôi import hôm qua”, cần làm rõ đợt import/danh sách bản ghi hoặc xác nhận dùng thời gian tạo làm tiêu chí thay thế.
+
+Webhook phản hồi ngay và dùng Next.js `after` để xử lý. Chống trùng trong bộ nhớ một tiến trình trong một giờ, UUID cố định cho tin trả lời; chưa có queue/kho chống trùng dùng chung. Nếu gửi trả lời thất bại sau tác vụ có quyền ghi, giữ dấu chống trùng để không tự lặp ghi. Nhiều máy chủ/khởi động lại chưa bảo đảm xử lý đúng một lần.
+
+## Chẩn đoán
+
+`Lark OpenRouter request failed` ghi `httpStatus`, `apiCode`, `reason`. `Lark OpenRouter: operation failed` ghi `stage`, `round`, `reason`. Không log secret, nội dung chat, lỗi Axios hoặc body provider thô.
+
+| Lý do/mã | Kiểm tra |
 | --- | --- |
-| 404 / `unsupported_parameters` | Không có endpoint hỗ trợ đủ tham số. Đã bỏ `strict` và `parallel_tool_calls` khỏi yêu cầu OpenRouter để tương thích các endpoint như Nemotron free; triển khai lại mã mới. Code vẫn xác thực schema và chặn nhiều công cụ trong cùng lượt. |
-| 404 / `no_endpoint` hoặc `invalid_model` | Kiểm tra model ID chính xác, model còn hoạt động và hỗ trợ tools; kiểm tra cài đặt định tuyến. |
-| `data_policy` | Không có nhà cung cấp đáp ứng chính sách Privacy hiện tại; kiểm tra model/chính sách, không tự động nới chính sách dữ liệu. |
-| 401 | Key không hợp lệ/đã vô hiệu hóa; kiểm tra biến môi trường đúng môi trường triển khai. |
-| 402 | Kiểm tra credits và giới hạn chi tiêu của key. |
-| 403 | Kiểm tra quyền truy cập, giới hạn ngân sách và guardrails. |
-| 429 | Giới hạn lượt gọi, kể cả quota model miễn phí; chờ hoặc chọn model phù hợp. |
-| 5xx | Nhà cung cấp đang lỗi/không khả dụng; thử lại sau. |
+| `bot_credentials_missing` | Cấu hình App ID/Secret của bot trên máy chủ; không lấy từ trang import. |
+| `app_id_mismatch` | App ID sự kiện phải khớp `LARK_BOT_APP_ID`/`LARK_APP_ID`. |
+| `allowed_users_not_configured` / `sender_not_allowed` | Đối chiếu Open ID với danh sách cho phép của cùng ứng dụng. |
+| `base_transport` | Base token/link, quyền ứng dụng và kết nối Lark. |
+| 404 / `unsupported_parameters` | Model/endpoint không hỗ trợ tham số; code đã bỏ strict và parallel_tool_calls để tương thích Nemotron free. |
+| 401 / 402 / 403 / 429 | Lần lượt kiểm tra key, credits, quyền/ngân sách/guardrails, giới hạn lượt gọi. |
+| `data_policy` | Cài đặt Privacy và model; không tự nới chính sách dữ liệu. |
+| `output_limit` | Mặc định 4096 token; tùy chọn `OPENROUTER_MAX_OUTPUT_TOKENS` từ 1024 đến 8192. Token suy luận cũng tiêu thụ ngân sách đầu ra. Không chạy công cụ bị cắt. |
+| `tool_budget` | Chia nhỏ yêu cầu hoặc model đang gọi nhiều công cụ cùng lượt. |
+| `invalid_response` / `invalid_tool` | Model trả cấu trúc không hợp lệ; thử lại/model hỗ trợ tool calling. |
+| `model_transport` / `timeout` | Kết nối model hoặc vượt 40 giây. |
 
-Nếu chat thường được nhưng truy vấn Base thất bại, xem log `Lark OpenRouter: operation failed` với `stage`, `round`, `reason`:
+Sự kiện `im.message.message_read_v1` và `im.chat.access_event.bot_p2p_chat_entered_v1` bị bỏ qua là bình thường. Log `replied` chỉ xác nhận đã gửi tin nhắn Lark, kể cả nội dung là thông báo lỗi.
 
-- `output_limit`: model trả `finish_reason=length`. Token suy luận cũng có thể dùng hết ngân sách trước khi hoàn tất công cụ/trả lời. Mặc định mỗi lượt đã tăng từ 1600 lên 4096 token; tùy chọn `OPENROUTER_MAX_OUTPUT_TOKENS` nhận số nguyên từ 1024 đến 8192. Không chạy công cụ hoặc hiển thị kết quả bị cắt. Không thêm tham số reasoning bắt buộc vì không phải endpoint nào cũng hỗ trợ.
-- `tool_budget`: model gọi nhiều công cụ cùng lượt hoặc vượt ba lượt công cụ; bot không thực thi các lệnh đó.
-- `invalid_response` / `invalid_tool`: model trả cấu trúc không hợp lệ. Tham số JSON sai có thể được phản hồi lại model để sửa trong giới hạn lượt hiện có.
-- `base_transport`: lỗi đọc schema hoặc API truy vấn Base; kiểm tra quyền, bảng đang chọn và kết nối Lark.
-- `model_transport` / `timeout`: lỗi kết nối model hoặc vượt thời gian 40 giây. Bot không tự thử lại thao tác ghi.
+Luồng OpenAI cũ chỉ đọc dùng `OPENAI_API_KEY` và `OPENAI_MODEL` (mặc định `gpt-4.1-mini`). Nó vẫn nhận client độc lập của bot, nhưng chưa khám phá/chọn bảng tự nhiên như OpenRouter: cần Base chỉ có một bảng hoặc `LARK_BOT_TABLE_ID`. Không có key thì lệnh `tables`/`base A03` vẫn hoạt động trực tiếp qua Lark.
 
-Lọc ngày hỗ trợ type `5` (ngày), `1001` (thời gian tạo), `1002` (thời gian sửa). Type `1003`/`1004` là người tạo/sửa, không lọc như ngày. Khoảng “hôm qua” được tính bằng code theo Asia/Ho_Chi_Minh, từ 00:00 hôm qua đến trước 00:00 hôm nay. Bot nhận tên bảng đang chọn từ cấu hình, không tự chuyển sang bảng khác theo tên trong tin nhắn.
+## Dữ liệu và kiểm tra
 
-“Ngân sách tháng 11 tôi import hôm qua” khác với “tổng tháng 11 của các bản ghi tạo hôm qua”: import có thể cập nhật bản ghi có sẵn. Bot hiện không có công cụ đọc lịch sử import hoặc xác định người thực hiện import; cần làm rõ đợt import/danh sách bản ghi, hoặc người dùng xác nhận dùng thời gian tạo làm tiêu chí thay thế. Chưa tự xác định đợt import từ câu hỏi này. Không đưa ra tổng tháng rồi gọi đó là tổng import hôm qua.
+OpenRouter/nhà cung cấp model nhận tin nhắn, tên bảng, schema/options và kết quả công cụ cần thiết. Không gửi App Secret/token truy cập Lark. Chính sách lưu trữ phụ thuộc OpenRouter/provider. App token trong URL Base là định danh tài nguyên, không phải tenant access token.
 
-Tham khảo: [OpenRouter về token suy luận và giới hạn đầu ra](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+Kiểm tra mô phỏng không gọi API thật:
 
-`im.message.message_read_v1` và `im.chat.access_event.bot_p2p_chat_entered_v1` bị bỏ qua là bình thường. Bot chỉ xử lý `im.message.receive_v1`. Log `replied` nghĩa là đã gửi tin nhắn qua Lark thành công, kể cả khi nội dung trả lời là thông báo lỗi OpenRouter.
-
-## Hỏi đáp bằng OpenAI (luồng cũ, chỉ đọc)
-
-Trên Vercel → Settings → Environment Variables, thêm cho môi trường Production rồi triển khai mã mới:
-
-```env
-OPENAI_API_KEY=<API key của OpenAI Platform>
-OPENAI_MODEL=gpt-4.1-mini
+```sh
+node tests/lark-bot-tables.cjs
+node tests/lark-client-config.cjs
+node tests/lark-openrouter.cjs
+node tests/lark-bot.cjs
+node tests/lark-openai.cjs
 ```
 
-`OPENAI_MODEL` tùy chọn, mặc định `gpt-4.1-mini`; model được chọn phải hỗ trợ Responses API và function calling. Không đặt API key vào biến `NEXT_PUBLIC_*`, không gửi key trong tin nhắn. Cần API key hợp lệ và hạn mức API khả dụng.
+Sau deploy: đổi bảng import sang A01, hỏi bot về A03 để kiểm tra bot vẫn chọn đúng A03; thử `tables`, bảng trùng tên, tài khoản ngoài danh sách và tài khoản chỉ đọc. Đối chiếu kết quả với Base thật trước khi dùng dữ liệu vận hành.
 
-Các tin nhắn không phải lệnh `base` sẽ dùng OpenAI. Ví dụ (thay tên/giá trị theo bảng thật):
-
-- “Bảng hiện tại có những cột nào?”
-- “Liệt kê Brand và Mã ngân sách của Brand ABC năm 2026.”
-- “Có bao nhiêu bản ghi Brand ABC năm 2026?”
-- “Tính tổng cột Số tiền TGĐ duyệt cho Brand ABC năm 2026.”
-
-Luồng dùng [Responses API và function calling](https://developers.openai.com/api/docs/guides/function-calling): LLM nhìn schema, gọi công cụ `query_base` chỉ đọc; code xác thực và thực hiện lọc/đếm/tính tổng, sau đó LLM trình bày kết quả. Không cung cấp công cụ ghi/xóa, thực thi code hay chọn Base khác. Chỉ sau khi kiểm tra quyền người gửi, bot mới gọi OpenAI. Không có key thì bot báo chưa cấu hình; lệnh `base` vẫn hoạt động không cần OpenAI.
-
-Mỗi câu hỏi gửi nội dung tin nhắn, tên/kiểu cột và kết quả truy vấn cần thiết tới OpenAI; không gửi App Secret hay token Lark. Với tổng/đếm chỉ gửi kết quả tổng hợp; với liệt kê gửi tối đa 10 dòng × 8 cột, mỗi giá trị tối đa 300 ký tự. Gửi `store: false` cho các yêu cầu Responses. Không lưu lịch sử hội thoại: cần nêu đủ điều kiện trong từng tin nhắn, không dựa vào câu trước.
-
-Giới hạn: lọc AND tối đa 8 điều kiện; văn bản/lựa chọn hỗ trợ equals/contains, số/ngày hỗ trợ so sánh; ngày dùng Unix milliseconds do model suy ra. Tổng chỉ hỗ trợ cột số và công thức trả số; ô trống được bỏ qua và đếm riêng, ô có dữ liệu không phải số sẽ báo lỗi. Tổng là phép cộng bản ghi thỏa điều kiện, chưa tự loại trùng hay xử lý ngân sách cha/con. Chưa hỗ trợ group-by, sắp xếp hoặc thống kê giá trị phân biệt.
-
-Mỗi lần dùng tối đa 3 yêu cầu OpenAI và 2 truy vấn công cụ, giới hạn xử lý AI/đọc Base 40 giây để còn thời gian gửi trả lời trong webhook 60 giây. Công cụ quét tối đa 10 trang × 500 dòng trên toàn bảng, lọc trong code; tổng/đếm chỉ trả khi đọc hết bảng. Bảng lớn hơn giới hạn sẽ báo chưa đủ dữ liệu thay vì trả tổng một phần (thêm điều kiện lọc không làm giảm số dòng phải quét). Khi đó cần bảng tổng hợp/bảng nhỏ hơn. API lỗi/quá hạn sẽ trả thông báo; kiểm tra log Vercel, API key, model và hạn mức.
-
-Kiểm tra mô phỏng không gọi API thật: `node tests/lark-openai.cjs` và `node tests/lark-bot.cjs`. Sau khi deploy, thử các câu trên, đối chiếu tổng với Base và thử tài khoản ngoài danh sách để xác nhận không được truy vấn. Thử `base` để kiểm tra đường đọc trực tiếp nếu AI gặp lỗi.
-
-Webhook phản hồi ngay và xử lý qua Next.js `after`; máy chủ triển khai phải hỗ trợ vòng đời này. Chống trùng trong bộ nhớ trong 1 giờ và dùng UUID cố định khi trả lời; nhiều máy chủ vẫn có thể đọc Base lặp lại. Tác vụ nền không có hàng đợi bền vững: nếu máy chủ dừng sau khi xác nhận sự kiện, kết quả có thể không được gửi; người dùng cần gửi lại lệnh. Khi đổi App ID của Base đang chọn, cần cấu hình lại sự kiện và Open ID tương ứng.
-
-Kiểm tra cục bộ: `node tests/lark-bot.cjs`. Cần kiểm tra thực tế sau khi triển khai: xác minh URL, tài khoản được phép nhận dữ liệu, tài khoản ngoài danh sách/chat nhóm không nhận dữ liệu và Base thiếu quyền trả thông báo lỗi.
-
-## Bot không trả lời
-
-Gửi `base` trong chat riêng (không cần OpenAI), mở Vercel → Logs và tìm `/api/bot/lark/events` hoặc `Lark bot:`. POST trả 200 chỉ xác nhận đã nhận sự kiện; xem log để biết sự kiện được xử lý hay bỏ qua:
-
-| Log/lý do | Cách kiểm tra |
-| --- | --- |
-| Không có POST mới khi nhắn bot | Kiểm tra đăng ký `im.message.receive_v1`, đúng ứng dụng/URL Production, quyền nhận tin nhắn và phiên bản ứng dụng đã phát hành. Xác minh challenge thành công chưa chứng minh tin nhắn được chuyển tới webhook. |
-| `allowed_users_not_configured` | Thêm `LARK_BOT_ALLOWED_OPEN_IDS` vào môi trường Production rồi redeploy. Log có `senderOpenId` của người gửi để quản trị viên đối chiếu và đưa đúng tài khoản vào danh sách. |
-| `sender_not_allowed` | Đối chiếu `senderOpenId` với danh sách; không dùng user ID/union ID thay cho Open ID. Không mở quyền cho mọi tài khoản để thử. |
-| `app_id_mismatch` | App ID trong sự kiện phải khớp ứng dụng của Base đang chọn; log ghi `receivedAppId` và `configuredAppId`. |
-| `invalid_event_auth` | Kiểm tra Verification Token và Encrypt Key của đúng ứng dụng trong môi trường Production. |
-| `not_private_chat` / `unsupported_message_type` | Gửi tin nhắn văn bản trong chat riêng với bot. Mention trong tin nhắn văn bản được loại bỏ trước khi phân tích lệnh. |
-| `accepted` rồi `lookup failed` | Kiểm tra cấu hình/quyền đọc Base, mã `apiCode`/`httpStatus` nếu có. Bot sẽ thử gửi thông báo lỗi. |
-| `failed to send reply` | Kiểm tra `apiCode`/`httpStatus` và quyền gửi tin nhắn của bot. Log chỉ ghi mã lỗi, không ghi token, nội dung hay toàn bộ lỗi Axios. |
-| `replied` | API Lark đã chấp nhận gửi trả lời cho message ID ghi trong log. |
-
-Sau mỗi lần đổi biến môi trường cần redeploy, rồi gửi một tin nhắn mới. Log có Open ID/message ID để chẩn đoán; chỉ chia sẻ phần mã lỗi cần thiết, không chia sẻ API key/token.
-
-Tài liệu Lark: [Node SDK — sự kiện và bot](https://github.com/larksuite/node-sdk), [Reply message](https://open.larksuite.com/document/server-docs/im-v1/message/reply).
+Tài liệu: [Liệt kê bảng Lark](https://open.larksuite.com/document/server-docs/docs/bitable-v1/app-table/list), [OpenRouter tool calling](https://openrouter.ai/docs/guides/features/tool-calling), [Token suy luận](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
